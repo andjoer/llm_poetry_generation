@@ -61,6 +61,11 @@ def get_last_two_vowels(word):
     #word = re.sub('[ö]', 'o', word) 
     #word = re.sub('[ü]', 'u', word) 
     word = re.sub('[y]', 'i', word) 
+    word = re.sub('ie', 'i', word)
+    word = re.sub('ae', 'a', word)
+    word = re.sub('oe', 'o', word)
+    word = re.sub('ue', 'u', word) 
+    
     vowels = [x for x in re.split(r'[^aeiouyäöü]',word) if x]
     try:
         if vowels[-1] == word[-1]:
