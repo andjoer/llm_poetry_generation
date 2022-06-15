@@ -76,9 +76,10 @@ def get_last_two_vowels(word):
         last = False
         print('vowel error, word:')
         print(word)
-    try: 
-        vowels = vowels[-2:]
-    except: 
+    
+    vowels = vowels[-2:]
+
+    if len(vowels) < 2:
         vowels = None
     
     return vowels,last

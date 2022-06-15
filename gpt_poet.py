@@ -113,7 +113,7 @@ def gpt_poet(input_text, target_rythm,num_syll,title_accepted,tollerance = 4,LLM
                 if len(rythm) > 0:                                                                               # rythm has no [-1]
                     if np.sum(comp) == 0 and rythm[-1] == last and len(verse.rythm) <= num_syll and len(verse.rythm) >= num_syll*0.65:
 
-                        return ' '.join(verse.text[:token_idx]) + '\n'
+                        return re.sub('[.].','',' '.join(verse.text[:token_idx])) + '\n'
                
 
         if candidates:

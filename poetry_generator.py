@@ -279,7 +279,7 @@ def start_poetry_generation(prompt,target_rythm, num_syll_lst, rhyme_scheme, sho
 
 if __name__ == "__main__":  
     sys.stdout = Logger()
-    files = glob.glob("logs/*.txt")
+    files = glob.glob("logs/*.log")
     max_idx = 0
     for file in files: 
         max_idx = max(int(re.findall(r'\d+', file)[0]),max_idx)
@@ -299,7 +299,8 @@ if __name__ == "__main__":
         
  
 
-        LLM = random.choice(LLMS)
+        #LLM = random.choice(LLMS)
+        LLM = 'GPT2-large'
 
         if LLM == 'GPT3':
             prompt_text = 'schreibe ein Gedicht auf Deutsch ' + prompt_text

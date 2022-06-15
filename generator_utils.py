@@ -22,7 +22,7 @@ class Logger(object):
         self.log += message   
 
     def save(self,i):
-        with open('logs/poem_' + str(i)+'.txt', 'w') as f:
+        with open('logs/poem_' + str(i)+'.log', 'w') as f:
              f.write(self.log)
              self.log = ''
 

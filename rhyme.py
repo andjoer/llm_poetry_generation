@@ -18,7 +18,7 @@ def get_last(word_lst):
 
     return None
 
-def find_rhyme(verse_lst,idx1,idx2,target_rythm,last_stress = -2, detection_method ='neural',LLM='GPT2',use_tts = True):
+def find_rhyme(verse_lst,idx1,idx2,target_rythm,last_stress = -2, detection_method ='neural',LLM='GPT2',use_tts = True,return_alternatives=False):
 
     print('--- looking for rhymes ---')
     print('using ' + str(LLM))
@@ -224,5 +224,9 @@ def find_rhyme(verse_lst,idx1,idx2,target_rythm,last_stress = -2, detection_meth
     
     verse_lst[idx1] = verse_cl(' '.join(verse_lst[idx1].text[:last]) + ' ' + bi_selection)
     verse_lst[idx2] = verse_cl(causal_selection)
+    
+    if return_alternatives == False: 
+        return verse_lst
 
-    return verse_lst
+    else:
+        return verse_lst, bi_syns, causal_syns

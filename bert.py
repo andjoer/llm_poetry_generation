@@ -216,7 +216,7 @@ def bidirectinal_synonyms(verse,context_aft, target_rythm, num_out = 50):
         ################################################################################
         candidates, candidates_perp = bidirectinal_synonyms_single(verse, last_idx, context_aft, target, num_out = 150)
 
-        candidate_idx = np.argsort(candidates_perp)[:-int(len(candidates_perp)/3)]
+        candidate_idx = np.argsort(candidates_perp)[:-int(len(candidates_perp)*0.6)]
 
 
         candidates_chosen = set(list(candidates[candidate_idx]))
