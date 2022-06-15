@@ -1,4 +1,4 @@
-from bert import bidirectinal_synonyms
+from bert import bidirectional_synonyms
 
 from gpt_poet import gpt_synonyms
 from sia_rhyme.siamese_rhyme import siamese_rhyme
@@ -10,11 +10,21 @@ from rhyme_detection.colone_phonetics import compare_words, compare_last_vowels,
 import re
 rhyme_model = siamese_rhyme()
 
-def get_last(word_lst):
+def get_last(word_lst_inp):
+    word_lst = word_lst_inp.copy()
     word_lst.reverse()
     for word in word_lst:
             if len(clean_word(word)) > 1:
                 return word
+
+    return None
+
+def get_last_idx(word_lst_inp):
+    word_lst = word_lst_inp.copy()
+    word_lst.reverse()
+    for i, word in enumerate(word_lst):
+            if len(clean_word(word)) > 1:
+                return len(word_lst) - i -1
 
     return None
 
@@ -30,26 +40,56 @@ def find_rhyme(verse_lst,idx1,idx2,target_rythm,last_stress = -2, detection_meth
     for i in range(idx1+1,idx2+1):
         context_aft += ' '.join(verse_lst[i].text) + '\n'
 
-    bi_syns = bidirectinal_synonyms(verse_lst[idx1],context_aft, target_rythm)
+    bi_syns = bidirectional_synonyms(verse_lst[idx1],context_aft, target_rythm)
 
     if verse_lst[idx1].text[-1].isalpha():
         last = -1
     else:
         last = -2 
 
-    causal_syns = gpt_synonyms(verse_lst[idx2],target_rythm,num_remove = 1,LLM=LLM)
-    causal_syns += gpt_synonyms(verse_lst[idx2],target_rythm,LLM=LLM)[1:]        
+    bi_trunk = ' '.join(verse_lst[idx1].text[:last+1])
 
-    if len(causal_syns) < 20:
-        causal_syns = gpt_synonyms(verse_lst[idx2],target_rythm,num_remove = 3,LLM=LLM)
+    if idx2 == len(verse_lst) - 1:
+        causal = True
+        causal_syns = gpt_synonyms(verse_lst[idx2],target_rythm,num_remove = 1,LLM=LLM)
+        causal_syns += gpt_synonyms(verse_lst[idx2],target_rythm,LLM=LLM)[1:]        
+
+        if len(causal_syns) < 20:
+            causal_syns = gpt_synonyms(verse_lst[idx2],target_rythm,num_remove = 3,LLM=LLM)
+
+    else:
+        causal = False
+        context_aft = ''
+        for i in range(idx2,len(verse_lst)):
+            context_aft += ' '.join(verse_lst[i].text) + '\n'
+
+        syns_tmp = bidirectional_synonyms(verse_lst[idx1],context_aft, target_rythm)
+
+        causal_syns = []
+
+        last_idx = get_last_idx(verse_lst[idx2].text)
+
+        verse_trunk = ' '.join(verse_lst[idx2].text[:last_idx])
+        for syn in syns_tmp:
+            causal_syns.append(verse_trunk + ' ' + ' '.join(syn))
 
 
-    print('number of found alternatives')
-    print('causal:')
-    print(len(causal_syns))
-    print('bidirectional:')
-    print(len(bi_syns))
-    print('-----------------------------')
+
+    if causal: 
+        print('number of found alternatives')
+        print('causal:')
+        print(len(causal_syns))
+        print('bidirectional:')
+        print(len(bi_syns))
+        print('-----------------------------')
+
+    else: 
+        print('number of found alternatives')
+        print('bidirectional first:')
+        print(len(bi_syns))
+        print('bidirectional second:')
+        print(len(causal_syns))       
+        print('-----------------------------')
 
     found = False
 
@@ -219,7 +259,7 @@ def find_rhyme(verse_lst,idx1,idx2,target_rythm,last_stress = -2, detection_meth
               
 
     print('final choice:')
-    print(bi_selection)
+    print(bi_trunk + ' ' + bi_selection)
     print(causal_selection)
     
     verse_lst[idx1] = verse_cl(' '.join(verse_lst[idx1].text[:last]) + ' ' + bi_selection)
@@ -229,4 +269,9 @@ def find_rhyme(verse_lst,idx1,idx2,target_rythm,last_stress = -2, detection_meth
         return verse_lst
 
     else:
+
+        bi_syns = [' '.join(syn) for syn in bi_syns]
+        
+        bi_syns = [bi_trunk + ' ' + syn for syn in bi_syns]
+
         return verse_lst, bi_syns, causal_syns

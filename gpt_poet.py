@@ -149,7 +149,9 @@ def gpt_synonyms(verse,target_rythm,num_remove=2,LLM='GPT2-large'):
         print('invalid LLM selection, will use gpt2')
         generated = gpt2(input_text_cont, max_length=10,num_return_sequences=150)
 
-    target_rythm_ext = np.asarray(extend_target_rythm(verse.rythm,target_rythm))
+    if target_rythm:    
+
+        target_rythm_ext = np.asarray(extend_target_rythm(verse.rythm,target_rythm))
 
   
     for text in generated:
@@ -160,13 +162,16 @@ def gpt_synonyms(verse,target_rythm,num_remove=2,LLM='GPT2-large'):
         if len(line) > 1 and len(line) < (len(' '.join(verse.text[-num_remove:])) + 5):
             verse_tmp = verse_cl(input_text  +' '+line)
             
-            rythm =  np.asarray(verse_tmp.rythm)
+            if target_rythm:
+                rythm =  np.asarray(verse_tmp.rythm)
+                
+                if len(rythm) == len(target_rythm_ext):
+                    comp = np.abs((target_rythm_ext-rythm) * (rythm != 0.5))
 
-            if len(rythm) == len(target_rythm_ext):
-                comp = np.abs((target_rythm_ext-rythm) * (rythm != 0.5))
-
-                if np.sum(comp) == 0:
-                    lines.append(input_text  + ' ' + line)
+                    if np.sum(comp) == 0:
+                        lines.append(input_text  + ' ' + line)
+            else: 
+                lines.append(input_text  + ' ' + line)
 
     
     return lines
