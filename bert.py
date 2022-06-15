@@ -161,7 +161,7 @@ def bidirectional_synonyms_single(verse,last_idx,context_aft, target, num_out = 
 
         word = prediction['token_str']
         word = re.sub(r'[^a-zäöü]','',word.lower())
-        if target: 
+        if len(target) > 0: 
             rythm = get_rythm(word)
         doc = nlp(word)
         found_correct = []
