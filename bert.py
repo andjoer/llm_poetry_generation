@@ -7,10 +7,10 @@ import pandas as pd
 from perplexity import perplexity
 
 from spacy.lang.de.examples import sentences 
-from sia_rhyme.siamese_rhyme import siamese_rhyme
+#from sia_rhyme.siamese_rhyme import siamese_rhyme
 from rythm_utils import get_rythm, rythm_comp_adaptive,stressed_list,unstressed_list, extend_target_rythm, verse_cl
 
-rhyme_model = siamese_rhyme()
+#rhyme_model = siamese_rhyme()
 
 from parameters import bert_model
 nlp = spacy.load("de_core_news_lg")
@@ -166,7 +166,7 @@ def bidirectional_synonyms_single(verse,last_idx,context_aft, target, num_out = 
         doc = nlp(word)
         found_correct = []
         if len(word) > 1 and word != 'unk' and word not in input_text and not doc[0].pos_ in no_verse_end:
-            if target:
+            if len(target) > 0: 
                 if len(rythm) == len(target): 
                     if np.sum(np.abs(rythm-target)*(rythm != 0.5)) == 0:
                         candidates.append(word)

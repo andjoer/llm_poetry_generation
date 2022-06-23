@@ -7,8 +7,8 @@ from rythm import check_rythm
 
 from transformers import pipeline
 
-from rythm import verse_cl
-from rythm_utils import extend_target_rythm
+
+from rythm_utils import extend_target_rythm, verse_cl
 from gpt3 import gpt3
 
 from gpt2 import gpt2, gpt2_beam, gpt2_top_p

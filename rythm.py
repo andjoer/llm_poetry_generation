@@ -15,7 +15,7 @@ from spacy_utils import remove_tokens_idx, get_childs_idx, is_conj_adv
 
 from spacy.lang.de.examples import sentences 
 
-from rythm_utils import  get_all_comb, get_single_comb, get_rythm, rythm_comp_adaptive, get_best_shift,extend_target_rythm, compare_verse_rythm, stressed_list, unstressed_list
+from rythm_utils import  get_all_comb, get_single_comb, get_rythm, rythm_comp_adaptive, get_best_shift,extend_target_rythm, compare_verse_rythm, stressed_list, unstressed_list,verse_cl
 from bert import get_synonym
 from perplexity import perplexity
 
@@ -26,80 +26,6 @@ nlp = spacy.load("de_core_news_lg")
 
 jambus = [0,1]
 
-
-class verse_cl():
-    def __init__(self, text):
-        if type(text) == list:
-            self.text = text
-
-        else:
-            self.text = re.findall(r"[\w']+|[.,!?;]", text)
-        self.last_sign = ''
-        self.update()
-        #self.doc = nlp(self.text)
-        #self.get_rythm_sent()       
-        #self.update_token_dict()
-        self.context = ''
-    def update_token_dict(self):
-        offset = 0
-        self.token_dict = {}
-        self.token_starts = []
-        self.token_ends = []
-        for i, token in enumerate(self.rythm_tokens):
-            self.token_starts.append(offset)
-            for j,_ in enumerate(token):                                                       
-                self.token_dict[j+ offset] = i 
-
-            offset += len(token)
-            self.token_ends.append(offset)
-
-
-    def update_doc(self):
-        self.doc = nlp(str(self.doc))
-
-    def update(self, text = None):
-        if text and type(text) == list:
-            self.text = text
-
-        if text and type(text) != list:
-            self.text = re.findall(r"[\w']+|[.,!?;]", text)
-
-        self.doc = nlp(' '.join(self.text))
-        self.get_rythm_sent()
-        self.update_token_dict()
-
-
-    def get_rythm_sent(self):
-        
-        #stressed_list = ['NOUN','VERB','AUX','ADJ','PROPN','ADV','PERSON']
-        #unstressed_list = ['CCONJ','CONJ','DET','PART','SCONJ','CCONJ']
-        rythm = []
-       
-        doc = self.doc 
-        rythm_tokens = []
-        rythm = []
-        for token in doc:
-            if token.text.isalpha():
-                stress = list(get_rythm(token.text))
-                try:
-                    if stress == [0.5] and (token.pos_ in stressed_list):
-                        stress = [1]
-                except:
-                    pass
-
-                try:
-                    if stress == [0.5] and (token.pos_ in unstressed_list):
-                        stress = [0]
-                except:
-                    pass
-
-                rythm_tokens.append(stress)
-                rythm += stress
-            else:
-                rythm_tokens.append([])
-
-        self.rythm_tokens = rythm_tokens
-        self.rythm = rythm
 
 def token_compliance(verse, target_rythm):   
     if len(target_rythm )== 2:

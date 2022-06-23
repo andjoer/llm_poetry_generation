@@ -61,7 +61,8 @@ class SiameseRNN(nn.Module):
         # Setting up the Fully Connected Layers
         self.fc1 = nn.Sequential(
 
-            nn.Linear(bidim*hidden_dim, 128),
+            nn.Linear(bidim*hidden_dim*20, 128),
+            #nn.Linear(256, 128),
 
         )
 
@@ -70,6 +71,7 @@ class SiameseRNN(nn.Module):
                                                         # we don't use the DRY approach for readability
         if args:
             word_2 = args[0]
+
             emb_1 = self.embed(word_1)  
             emb_2 = self.embed(word_2)
         
@@ -79,22 +81,27 @@ class SiameseRNN(nn.Module):
                 emb_2) 
     
             
-            encoder_1_out = torch.mean(encoder_1_out,1)   #temporal average
-            encoder_2_out = torch.mean(encoder_2_out,1)   #temporal average
+    
+            #encoder_1_out = torch.mean(encoder_1_out[:,:,:],1)   #temporal average
+            #encoder_2_out = torch.mean(encoder_2_out[:,:,:],1)   #temporal average
             
+            encoder_1_out = torch.reshape(encoder_1_out[:,-20:,:],(encoder_1_out.size()[0],-1))
+            encoder_2_out = torch.reshape(encoder_2_out[:,-20:,:],(encoder_1_out.size()[0],-1))
             
             output1 = self.fc1(encoder_1_out)
             output2 = self.fc1(encoder_2_out)
-
+           
     
             return output1, output2 
+
         else:                                                   
             emb = self.embed(word_1)      
             encoder_out , encoder_hidden = self.rnn(
                 emb) 
           
-            encoder_out = torch.mean(encoder_out,1)   #temporal average
-                        
+            #encoder_out = torch.mean(encoder_out,1)   #temporal average
+            encoder_out = torch.reshape(encoder_out[:,-20:,:],(encoder_out.size()[0],-1))
+
             output = self.fc1(encoder_out)
     
             return output

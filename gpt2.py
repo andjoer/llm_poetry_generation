@@ -34,7 +34,7 @@ def gpt2_top_p(input_text,max_length = 10,num_return_sequences=5):
     output = model.generate(
         input_ids,
         do_sample = True,
-        max_length = 200,
+        max_length = max_length,
         top_p = 0.92,
         top_k = 0,
         num_return_sequences = num_return_sequences,

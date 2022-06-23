@@ -2,7 +2,7 @@ from bert import bidirectional_synonyms
 
 from gpt_poet import gpt_synonyms
 from sia_rhyme.siamese_rhyme import siamese_rhyme
-from rythm import verse_cl
+from rythm_utils import verse_cl
 import numpy as np 
 from rhyme_detection.word_spectral import wordspectrum
 from rhyme_detection.utils import check_rhyme
@@ -28,7 +28,7 @@ def get_last_idx(word_lst_inp):
 
     return None
 
-def find_rhyme(verse_lst,idx1,idx2,target_rythm,last_stress = -2, detection_method ='neural',LLM='GPT2',use_tts = True,return_alternatives=False):
+def find_rhyme(verse_lst,idx1,idx2,target_rythm,last_stress = -2, detection_method ='neural',LLM='GPT2',use_tts = False,return_alternatives=False):
 
     print('--- looking for rhymes ---')
     print('using ' + str(LLM))
@@ -116,7 +116,7 @@ def find_rhyme(verse_lst,idx1,idx2,target_rythm,last_stress = -2, detection_meth
         print(bi_syns)
 
 
-    for word_pair in word_pairs:
+    '''for word_pair in word_pairs:
             word_1 = word_pair[0]
             word_2 = word_pair[1]
 
@@ -197,7 +197,7 @@ def find_rhyme(verse_lst,idx1,idx2,target_rythm,last_stress = -2, detection_meth
         print('rhyme not found')
         found = True
         bi_selection = ' '.join(bi_syns[-1])
-        causal_selection = causal_syns[0]      
+        causal_selection = causal_syns[0]     ''' 
 
     if  not found:
         for word_pair in word_pairs:
@@ -241,25 +241,26 @@ def find_rhyme(verse_lst,idx1,idx2,target_rythm,last_stress = -2, detection_meth
                         print('failed to create spectrum')
                         print(word_1)
                         print(word_2)
-                        print(causal_syns[pairs[idx[0]]])
-                        print(bi_syns[pairs[idx[0]]])
+                
 
                 else: mean = 1000
             
 
                 spectral_diffs.append(mean)
 
+            best_idx = candidate_idx[np.argmin(np.asarray(spectral_diffs))]  
+
         else:
-            best_idx = 0 
+            best_idx = np.argmin(distances) 
             
                 
-        best_idx = candidate_idx[np.argmin(np.asarray(spectral_diffs))]
+        
         bi_selection = sent_pairs[best_idx][0]
         causal_selection = sent_pairs[best_idx][1]
               
 
     print('final choice:')
-    print(bi_trunk + ' ' + bi_selection)
+    print(' '.join(verse_lst[idx1].text[:last]) + ' ' + bi_selection)
     print(causal_selection)
     
     verse_lst[idx1] = verse_cl(' '.join(verse_lst[idx1].text[:last]) + ' ' + bi_selection)

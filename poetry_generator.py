@@ -49,7 +49,7 @@ prompt_4 = ['''Wodurch gibt sich der Genius kund? Wodurch sich der Schöpfer
 Kund gibt in der Natur, in dem unendlichen All:
 Klar ist der Äther und doch von unermeßlicher Tiefe;
 Offen dem Aug, dem Verstand bleibt er doch ewig geheim.
-''',[12],trochee]
+''',[12,13],trochee]
 
 # Johannes Daniel Falk An das Nichts
 prompt_5 = ['''Selbst philosophische Systeme –
@@ -60,7 +60,7 @@ Sie waren samt und sonders – Nichts.
 Was bin ich selbst? – Ein Kind der Erde,
 Der Schatten eines Traumgesichts,
 Der halbe Weg von Gott zum Werde,
-Ein Engel heut, und morgen – Nichts.''',[8],jambus]
+Ein Engel heut, und morgen – Nichts.''',[9],jambus]
 
 # Johann Wolfgang von Goethe Vermächtnis
 prompt_6 = ['''Kein Wesen kann zu nichts zerfallen!
@@ -68,7 +68,7 @@ Das Ewge regt sich fort in allen,
 Am Sein erhalte dich beglückt!
 Das Sein ist ewig: denn Gesetze
 Bewahren die lebendgen Schätze,
-Aus welchen sich das All geschmückt. ''',[9],jambus]
+Aus welchen sich das All geschmückt. ''',[9,10],jambus]
 
 # Johann Wolfgang von Goethe Parabase
 prompt_7 = ['''Freudig war, vor vielen Jahren,
@@ -95,7 +95,7 @@ Wirft heut der Mensch vor das, was gestern er
 Verspottet, sich auf's Knie, um morgen wieder
 Es zu zertrümmern, dann aufs neu die Trümmer
 Zu sammeln, es auf den Altar zurück
-Zu setzen, es mit Weihrauch zu bequalmen!''',[10],jambus]
+Zu setzen, es mit Weihrauch zu bequalmen!''',[10,11],jambus]
 
 # Friedrich Hebbel Philosophenschicksal
 prompt_9 = ['''Salomons Schlüssel glaubst du zu fassen und Himmel und Erde
@@ -125,7 +125,7 @@ von dir sagen kannst: Na wenn schon!
 Ist mein Leben jetzt auch um,
 habe ich doch was geleistet:
 ich war klein und laut und dumm.
-''',[8],trochee]
+''',[8,9],trochee]
 
 # Robert Gernhardt, Ach!
 prompt_13 =['''Woran soll es gehn? Ans Sterben?
@@ -288,7 +288,7 @@ if __name__ == "__main__":
     start_idx = max_idx + 1
     print(start_idx)
     for i in range(1000):  
-        rhyme_schemes = ['','aabb','abba','abab']
+        rhyme_schemes = ['aabb','abba','abab']
         LLMS = ['GPT2-large']
         prompts = [prompt_2,prompt_3,prompt_4,prompt_5,prompt_6,prompt_7,prompt_8,prompt_9,prompt_10,prompt_11,prompt_12,prompt_13]
   
@@ -302,12 +302,12 @@ if __name__ == "__main__":
         #LLM = random.choice(LLMS)
         LLM = 'GPT2-large'
 
-        if LLM == 'GPT3':
+        if LLM == 'GPT2-large':
             prompt_text = 'schreibe ein Gedicht auf Deutsch ' + prompt_text
         rhyme_scheme = random.choice(rhyme_schemes)
 
  
-        text, rating = generate_poetry(prompt_text,rythm, num_syll, rhyme_scheme,LLM=LLM)
+        text, rating = generate_poetry(prompt_text,rythm, num_syll, rhyme_scheme,LLM=LLM,use_tts = False)
 
         print('*** final output ***')
         print('\n')

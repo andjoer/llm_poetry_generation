@@ -30,11 +30,18 @@ def sequence_to_final(sequence, field):
     return "".join(output)
 
 def word_to_tensor(vocab, word):
-    word = tokenize(word)
+    word = tokenize(word[::-1])
 
     sequence = [vocab.vocab.stoi[char] for char in word]
+    pad = 20 - len(sequence)
+    padder = torch.nn.ConstantPad1d((0,pad),1)
+    
+
+    #torch.nn.functional.pad(sequence, pad, mode='constant', value=1)
     inp_tensor = torch.LongTensor(sequence).to(hp.device)
+    inp_tensor = padder(inp_tensor)
     inp_tensor = torch.reshape(inp_tensor,(len(inp_tensor),1))
+    
     return inp_tensor
 
 def text_to_sequence(text, field):
