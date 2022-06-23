@@ -155,8 +155,9 @@ def generate_poetry(prompt,target_rythm, num_syll_lst, rhyme_scheme, shots = 1, 
     
     if rhyme_scheme:
         rhyme_scheme_print = rhyme_scheme
+        
         rhyme_scheme = conv_rhyme_scheme(rhyme_scheme)
-        print(rhyme_scheme)
+        
         
     else:
         rhyme_scheme_print = 'No Rhyme'
@@ -288,7 +289,7 @@ if __name__ == "__main__":
     start_idx = max_idx + 1
     print(start_idx)
     for i in range(1000):  
-        rhyme_schemes = ['aabb','abba','abab']
+        rhyme_schemes = ['aabb']#['','aabb','abba','abab']
         LLMS = ['GPT2-large']
         prompts = [prompt_2,prompt_3,prompt_4,prompt_5,prompt_6,prompt_7,prompt_8,prompt_9,prompt_10,prompt_11,prompt_12,prompt_13]
   
@@ -302,7 +303,7 @@ if __name__ == "__main__":
         #LLM = random.choice(LLMS)
         LLM = 'GPT2-large'
 
-        if LLM == 'GPT2-large':
+        if LLM == 'GPT3':
             prompt_text = 'schreibe ein Gedicht auf Deutsch ' + prompt_text
         rhyme_scheme = random.choice(rhyme_schemes)
 

@@ -9,8 +9,8 @@ from PIL import Image
 from tensorboardX import SummaryWriter
 from torch import nn
 from tqdm import tqdm
-from . models import ContrastiveLoss, vec_distance
-from . import hyperparameters as hp
+from models import ContrastiveLoss, vec_distance
+import hyperparameters as hp
 import os
 
 def tokenize(text):

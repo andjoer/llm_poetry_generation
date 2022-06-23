@@ -116,7 +116,7 @@ def find_rhyme(verse_lst,idx1,idx2,target_rythm,last_stress = -2, detection_meth
         print(bi_syns)
 
 
-    '''for word_pair in word_pairs:
+    for word_pair in word_pairs:
             word_1 = word_pair[0]
             word_2 = word_pair[1]
 
@@ -134,7 +134,7 @@ def find_rhyme(verse_lst,idx1,idx2,target_rythm,last_stress = -2, detection_meth
         found = True
         print('found via colone phonetics')
 
-    if not found: 
+    '''if not found: 
         for idx, word_pair in enumerate(word_pairs):
             word_1 = word_pair[0]
             word_2 = word_pair[1]
@@ -146,9 +146,16 @@ def find_rhyme(verse_lst,idx1,idx2,target_rythm,last_stress = -2, detection_meth
                     causal_selection = sent_pairs[idx][1]
                     found = True
             
-                    break
+                    break'''
 
-    if not found:
+    if found: 
+        print('found via vowels or colone phonetics:')
+
+        print(bi_selection)
+        print(causal_selection)
+
+
+    '''if not found:
         for word_pair in word_pairs:
             word_1 = word_pair[0]
             word_2 = word_pair[1]
@@ -169,12 +176,12 @@ def find_rhyme(verse_lst,idx1,idx2,target_rythm,last_stress = -2, detection_meth
             bi_selection = sent_pairs[best_idx][0] #pairs[best_idx][0]
             causal_selection = sent_pairs[best_idx][1]
             found = True
-            print('found via colone phonetics round 2')
+            print('found via colone phonetics round 2')'''
 
 
     
 
-    if not found:
+    '''if not found:
         
         for idx, word_pair in enumerate(word_pairs):
             word_1 = word_pair[0]
@@ -189,20 +196,21 @@ def find_rhyme(verse_lst,idx1,idx2,target_rythm,last_stress = -2, detection_meth
                 causal_selection = sent_pairs[idx][1]
                 print('matching last two letters')
                 found = True
-                break
+                break'''
 
         
 
-    if not found and len(causal_syns)*len(bi_syns) < 20:            # leave it as it is; unprobable to find a rhyme
+    if not found and len(causal_syns)*len(bi_syns) < 10:            # leave it as it is; unprobable to find a rhyme
         print('rhyme not found')
         found = True
         bi_selection = ' '.join(bi_syns[-1])
-        causal_selection = causal_syns[0]     ''' 
+        causal_selection = causal_syns[0]     
 
-    if  not found:
+    if  True:#not found:
+        vector_pairs = []
         for word_pair in word_pairs:
-            vector_pairs = []
-            vector_pairs.append([rhyme_model.get_word_vec(word_pair[0]),rhyme_model.get_word_vec(word_pair[0])])
+
+            vector_pairs.append([rhyme_model.get_word_vec(word_pair[0]),rhyme_model.get_word_vec(word_pair[1])])
             #causal_vecs.append(rhyme_model.get_word_vec(word_pair[0]))
 
         distances = []
@@ -254,9 +262,15 @@ def find_rhyme(verse_lst,idx1,idx2,target_rythm,last_stress = -2, detection_meth
             best_idx = np.argmin(distances) 
             
                 
+        print('found via sia rhyme')
+        print(sent_pairs[best_idx][0])
+        print(sent_pairs[best_idx][1])
+        print('distance: ' + str(np.amin(distances)))
         
-        bi_selection = sent_pairs[best_idx][0]
-        causal_selection = sent_pairs[best_idx][1]
+        if not found: 
+            bi_selection = sent_pairs[best_idx][0]
+            causal_selection = sent_pairs[best_idx][1]
+        
               
 
     print('final choice:')

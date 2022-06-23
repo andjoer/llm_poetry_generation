@@ -1,8 +1,8 @@
 import torch
 from torch import nn
 from torch import Tensor
-from . import hyperparameters as hp
-from . attention import LuongAttention
+import hyperparameters as hp
+from attention import LuongAttention
 import torch.nn.functional as F
   
 
