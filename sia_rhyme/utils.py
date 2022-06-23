@@ -32,7 +32,7 @@ def sequence_to_final(sequence, field):
 def word_to_tensor(vocab, word):
     word = tokenize(word[::-1])
 
-    sequence = [vocab.vocab.stoi[char] for char in word]
+    sequence = [2]+[vocab.vocab.stoi[char] for char in word]+[3]
     pad = 20 - len(sequence)
     padder = torch.nn.ConstantPad1d((0,pad),1)
     
