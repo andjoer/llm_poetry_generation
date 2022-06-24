@@ -93,7 +93,10 @@ def evaluate(model, val_iter, writer, step):
     step = 0
     eval_loss_total = 0
     acc_total = 0
+    
+    batch_sum = 0
     for i, batch in enumerate(val_iter):
+        batch_sum += len(batch)
         
         batch.word1 = torch.transpose(batch.word1,0,1) 
         batch.word2 = torch.transpose(batch.word2,0,1) 
@@ -110,7 +113,7 @@ def evaluate(model, val_iter, writer, step):
         step +=1
 
         
-    return (acc_total/step/hp.batch_size*100).item()
+    return (acc_total/batch_sum*100).item()
 
 
 
@@ -123,7 +126,7 @@ def train(model, optimizer, train_iter, val_iter, num_epochs,labels, words, fpat
     criterion = ContrastiveLoss()
 
     step = 0
-    
+    acc = 0
     for i in range(num_epochs):
         print('start')
         model.train()
@@ -148,6 +151,7 @@ def train(model, optimizer, train_iter, val_iter, num_epochs,labels, words, fpat
                 optimizer.step()
                 pbar.set_description(f'loss: {loss.item():.4f}')
                 writer.add_scalar('loss', loss.item(), step)
+                writer.add_scalar('accuracy', acc, step)
                 #writer.add_scalar('lr', scheduler.lr, step)
                 step += 1
                 step2 += 1

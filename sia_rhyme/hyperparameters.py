@@ -12,7 +12,7 @@ lin_out_dim = 8
 n_layers = 2     # default: 2
 dropout = 0.25   # default: 2
 batch_size = 64
-num_epochs = 20
+num_epochs = 40
 
 bidirectional = True
 

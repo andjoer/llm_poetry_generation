@@ -76,13 +76,7 @@ Eifrig so der Geist bestrebt,
 Zu erforschen, zu erfahren,
 Wie Natur im Schaffen lebt.
 Und es ist das ewig Eine,
-Das sich vielfach offenbart:
-Klein das Große, groß das Kleine,
-Alles nach der eignen Art;
-Immer wechselnd, fest sich haltend.
-Nah und fern und fern und nah,
-So gestaltend, umgestaltend –
-Zum Erstaunen bin ich da.''',[8],trochee]
+Das sich vielfach offenbart''',[8],trochee]
 
 # Giacomo Graf Leopardi Palinodie an den Marchese Gino Capponi
 prompt_8 = ['''O Geist, o Einsicht, Scharfsinn, übermenschlich,
@@ -151,7 +145,7 @@ das große Lachen
 prompt_15 = ['''über den Feldhamster Karl und den Philosophen Kant:
 ''',[9,8],trochee]
 
-def generate_poetry(prompt,target_rythm, num_syll_lst, rhyme_scheme, shots = 1, LLM='GPT2-large', LLM_rhyme='GPT2-large', use_tts = True):
+def generate_poetry(prompt,target_rythm, num_syll_lst, rhyme_scheme, shots = 1, LLM='GPT2-large', LLM_rhyme='GPT3', use_tts = True,num_lines = 15):
     
     if rhyme_scheme:
         rhyme_scheme_print = rhyme_scheme
@@ -175,7 +169,7 @@ def generate_poetry(prompt,target_rythm, num_syll_lst, rhyme_scheme, shots = 1, 
     title_accepted = True
     offset = 0
     rating = 'pending'
-    for i in range(10):
+    for i in range(num_lines):
 
         if LLM == 'GPT2-large_top_p':
             shots = 1
@@ -289,7 +283,7 @@ if __name__ == "__main__":
     start_idx = max_idx + 1
     print(start_idx)
     for i in range(1000):  
-        rhyme_schemes = ['aabb']#['','aabb','abba','abab']
+        rhyme_schemes = ['aabb','abba','abab']
         LLMS = ['GPT2-large']
         prompts = [prompt_2,prompt_3,prompt_4,prompt_5,prompt_6,prompt_7,prompt_8,prompt_9,prompt_10,prompt_11,prompt_12,prompt_13]
   
@@ -301,13 +295,13 @@ if __name__ == "__main__":
  
 
         #LLM = random.choice(LLMS)
-        LLM = 'GPT2-large'
+        LLM = 'GPT3'
 
         if LLM == 'GPT3':
-            prompt_text = 'schreibe ein Gedicht auf Deutsch ' + prompt_text
+            prompt_text = 'schreibe ein Gedicht auf Deutsch \n' + prompt_text + ' \n Titel: Warum ist etwas und nicht nur nichts \n'
         rhyme_scheme = random.choice(rhyme_schemes)
 
- 
+        print(prompt_text)
         text, rating = generate_poetry(prompt_text,rythm, num_syll, rhyme_scheme,LLM=LLM,use_tts = False)
 
         print('*** final output ***')

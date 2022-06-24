@@ -1,4 +1,4 @@
-from sia_rhyme.siamese_rhyme import siamese_rhyme
+from siamese_rhyme import siamese_rhyme
 
 
 model = siamese_rhyme(load=False)

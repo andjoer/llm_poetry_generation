@@ -2,20 +2,21 @@ import torch
 from torch import nn
 from torch import Tensor
 import hyperparameters as hp
-from attention import LuongAttention
+
 import torch.nn.functional as F
   
+def exponent_neg_manhattan_distance(vec_1, vec_2):
+        dist = torch.exp(-torch.sum(torch.abs(vec_1-vec_2),dim=1))
+
+        return dist
 
 def vec_distance(output1, output2):
 
-    """
-    dist = torch.norm(torch.sub(output1,output2),dim=1) #nn.torch.sum(nn.torch.square(nn.torch.diff(output1,output2)))
-    
-    dist_2 = torch.add(torch.norm(output1,dim=1),torch.norm(output2,dim=1))
-   
-    distance = torch.div(dist,dist_2)
-    """
-    distance = 1- F.cosine_similarity(output1, output2)  #cosine distance    
+
+    distance = 1- F.cosine_similarity(output1, output2)  
+
+    #distance = 1 - exponent_neg_manhattan_distance(output1,output2)  
+
     return distance
 
 class ContrastiveLoss(torch.nn.Module):
@@ -48,13 +49,12 @@ class SiameseRNN(nn.Module):
         self.embed = nn.Embedding(source_vocab_size, embed_dim, padding_idx=hp.pad_idx)
         self.rnn = nn.LSTM(embed_dim, hidden_dim, n_layers,
                           dropout=dropout, bidirectional=hp.bidirectional)
-        self.attention = LuongAttention(hidden_dim)
+       
        
         if hp.bidirectional: 
            bidim = 2
         else: 
             bidim = 1
-        self.lin = nn.Linear(hp.max_len*bidim*hidden_dim,32)
         
         
         
@@ -82,8 +82,8 @@ class SiameseRNN(nn.Module):
     
             
     
-            #encoder_1_out = torch.mean(encoder_1_out[:,:,:],1)   #temporal average
-            #encoder_2_out = torch.mean(encoder_2_out[:,:,:],1)   #temporal average
+            #encoder_1_out = torch.mean(encoder_1_out,1)   #temporal average
+            #encoder_2_out = torch.mean(encoder_2_out,1)   #temporal average
             
             encoder_1_out = torch.reshape(encoder_1_out[:,-20:,:],(encoder_1_out.size()[0],-1))
             encoder_2_out = torch.reshape(encoder_2_out[:,-20:,:],(encoder_1_out.size()[0],-1))
@@ -108,7 +108,4 @@ class SiameseRNN(nn.Module):
     
     
 
-    def exponent_neg_manhattan_distance(self, vec_1, vec_2):
-        dist = torch.exp(-torch.sum(torch.abs(vec_1-vec_2),dim=1))
-
-        return dist
+    
