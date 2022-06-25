@@ -98,3 +98,13 @@ Below an example of the german words "verstehen" and "lägen"
 It is visible that the difference at the end of the words becomes more or less zero
 
 <img src="graphics/mfccs_diff.svg"  title="mfcc difference of the words verstehen and lägen">
+
+## Rythm
+A model was trained that translates words into the IPA phonetic alphabet with symbols for secondary and primary word stress. This enables an algorithm to detect the rythm of the words. The corpus of orthographic and IPA pairs was scraped from Wiktionary. It was only trained on german language. The accuracy is around 97% on the validation set. In order to get the rythm of the word, the words are split with pyphen in order to get the syllables. According to the signs for primary and secondary stress of the IPA language the syllables are labeled primary stressed (1) secondary stressed (0.5) and not stressed (0)
+
+## The poem generation
+### The language models
+Two language models are used to generated the basis of the poems: a custom trained GPT2 and GPT3 which is accessed via the api. For GPT2 the large version of GPT2 was finetuned on data from projekt gutenberg. For masked langauge model a large version of BERT was used. It was also finetuned on the projekt gutenberg data but the results did not too much change compared to the not finetuned model. 
+
+### Getting the correct rythm 
+The poem is generated verse by verse. The language models produce around 10 different alternatives for each line. For these alternatives the rythm gets detected and the best fit is chosen. If only one sentence is produced and forwarded to the rythm correction spacy and bert have too much influence. This should be avoided since these are the two weakest links in the chain. 
