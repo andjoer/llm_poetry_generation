@@ -91,4 +91,4 @@ As corpus we use the german rhyme corpus https://github.com/tnhaider/german-rhym
 ### unsupervised rhyme detection
 A method was introduced and tested in order to detect rhymes in an unsupervised way. Via text to speech (here amazon Polly is used) words are converted to audio files. From these the mfcc features are extracted with the librosa library. By comparing these mfcc features it is possible to detect rhymes. The method is validated on the noicy corpus mentioned above. An accuracy of 93% was detected. <br/>
 
-<img src="raphics/mfccs_verstehen.svg"  title="mfcc features of the german word verstehen">
+<img src="graphics/mfccs_verstehen.svg"  title="mfcc features of the german word verstehen">
