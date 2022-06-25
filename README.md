@@ -7,7 +7,7 @@ It consists out of an algorithm that tries to create metrically correct poetry t
 Example: 
 
 (using german-poetry-gpt-2-large)
-Zu tiefst im Menschen , daß sein Antlitz sich nicht
+Zu tiefst im Menschen , daß sein Antlitz sich nicht <br>
 Von seiner innern Schönheit scheiden möchte ?
 Ein Lächeln , von dem oft in blassen tagen
 Der Schein in blassen Zügen in den Augen
