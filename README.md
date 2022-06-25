@@ -63,7 +63,7 @@ du kannst nicht wünschen denn wir dürfen nicht verlangen<br/>
 es kann nicht finden denn ich muss suchen<br/>
 sie muss vorhergehen denn es darf wirken<br/>
 
-der erste Grad ist die Unlauterkeit denn der derMensch ist nicht vollkommen<br/>
+der erste Grad ist die Unlauterkeit denn der der Mensch ist nicht vollkommen<br/>
 die Ursache ist nicht die Wirkung denn der Grund ist blos denn die Ursache ist die Folge<br/>
 der Mensch ist nicht ein Zweck denn der Zweck mag seyn denn der Mensch ist nicht ein Thier<br/>
 
