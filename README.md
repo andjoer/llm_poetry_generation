@@ -99,6 +99,16 @@ It is visible that the difference at the end of the words becomes more or less z
 
 <img src="graphics/mfccs_diff.svg"  title="mfcc difference of the words verstehen and lägen">
 
+### Siamese LSTM
+
+A Siamese LSTM was trained in order to create 128 dimensinal embeddings for a word. Words with less distance are more likely to rhyme then pairs with larger distance. As distance function the cosine between the two word vectors is used. <br/>
+
+As starting point an algorithm according to haider et al was implemented https://www.aclweb.org/anthology/W18-4509/ unfortunately this was difficult since the cited github code did not correspond with what they are describing in their paper. Also they state "For further experiments, we clean the entire set which reduces the total" (p. 82) which makes it difficult to reproduce their work.<br/>
+
+It was possible to reproduce their training curves, however it was found, that the model does not take into account the order of the letters. So "Katze" is very close to "zetka". 
+
+Due to this issue synthetic data was created. Therefore rhyming pairs had been taken and the last letters(random number between 3 and 6) of the second word of each pair had been shuffled. By this process it is not guaranteed that the resulting words won't rhyme. Therefore the synthetic data was filtered with the unsupervised algorithm described above. After the synthetic data was added the algorithm of haider et al performed significally lower. According to intution this could have to do something with the temporal average of the LSTM outputs. Therefore the architecture was changed in way that each output of the LSTM is fed into a fully connected layer without averaging it. This increased the performance a lot. Also, if the words are read from the right to left instead of the usual way the model would have the chance to learn that only the first (in the usual reading direction the last) letters are important. This indeed boosted the performance indeed a lot.  
+
 ## Rythm
 A model was trained that translates words into the IPA phonetic alphabet with symbols for secondary and primary word stress. This enables an algorithm to detect the rythm of the words. The corpus of orthographic and IPA pairs was scraped from Wiktionary. It was only trained on german language. The accuracy is around 97% on the validation set. In order to get the rythm of the word, the words are split with pyphen in order to get the syllables. According to the signs for primary and secondary stress of the IPA language the syllables are labeled primary stressed (1) secondary stressed (0.5) and not stressed (0)
 
