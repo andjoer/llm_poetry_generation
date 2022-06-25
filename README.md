@@ -107,4 +107,10 @@ A model was trained that translates words into the IPA phonetic alphabet with sy
 Two language models are used to generated the basis of the poems: a custom trained GPT2 and GPT3 which is accessed via the api. For GPT2 the large version of GPT2 was finetuned on data from projekt gutenberg. For masked langauge model a large version of BERT was used. It was also finetuned on the projekt gutenberg data but the results did not too much change compared to the not finetuned model. 
 
 ### Getting the correct rythm 
-The poem is generated verse by verse. The language models produce around 10 different alternatives for each line. For these alternatives the rythm gets detected and the best fit is chosen. If only one sentence is produced and forwarded to the rythm correction spacy and bert have too much influence. This should be avoided since these are the two weakest links in the chain. 
+The poem is generated verse by verse. The language models produce around 10 different alternatives for each line. For these alternatives the rythm gets detected and the best fit is chosen. If only one sentence is produced and forwarded to the rythm correction spacy and bert have too much influence. This should be avoided since these are the two weakest links in the chain. <br/>
+
+If there is any output complying with the conditions it is forwarded to an algorithm that corrects the rythms. If the verse is too long it gets shortened. By creating an semantic tree with spacy it can be figured out which elements could get removed by keeping the syntactically and semantic integrity of the verse. If there are more options how to shorten the verse the one with the lowest perplexitiy (measured with GPT2) and best matching rythm is chosen. If the sentence is too short they are extended with a tandem of BERT and GPT2. BERT is suggesting different options where a metrically correct word could be inserted. GPT2 reads all the options and decides for the one with the lowest perplexity. If a word itself does not comply to the rythm, BERT looks for synonyms. In this case Spacy is used in order to get the labels for the word (if it is a verb etc.). If Spacy finds suggested synoyms that have the same lables they are preferred. Afterwards again GPT2 looks for the best option. 
+
+
+
+
