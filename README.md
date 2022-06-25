@@ -70,7 +70,22 @@ der Mensch ist nicht ein Zweck denn der Zweck mag seyn denn der Mensch ist nicht
 er ist ein Recht denn die Gewalt ist eine Verbindlichkeit . er ist nie wirklicher denn der Mensch ist ein Weltwesen<br/>
 du bist ein Welttheil denn die Welt ist ein Platz . sie ist ein Begriff denn die Dinge sind nicht<br/><br/>
 
-### Release of finetuned models
+### Release of finetuned language models
 Two models have been trained for this project and are released on huggingface: 
 Anjoe/kant-gpt2-large  was trained on the "Akademie Ausgabe" for Kant
 Anjoe/german-poetry-gpt2-large was trained on a corpus extracted from projekt gutenberg
+
+### Rhyme and rythm models
+
+Two models have been trained and released: <br/>
+sia_rhyme projects words into a 128 dimensional vector space in a way that rhyming words are closer to each other. <br/>
+ortho_to_ipa translates words into the IPA phonetic alphabet with symbols for secondary and primary word stress. This enables an algorithm to detect the rythm of the words.<br/>
+
+# The Algorithm
+
+## Rhyme detection
+### The corpus
+
+As corpus we use the german rhyme corpus https://github.com/tnhaider/german-rhyme-corpus unfortunately the files that have been annotated are from the Deutsches Textarchiv in the TEI standard. Due to inconsistent usage of the TEI notation there might be noice introduced into the extracted dataset of rhyming and non rhyming word pairs. Additional to this the authors of the dataset also detected some noice due to annotation mistakes. https://www.aclweb.org/anthology/W18-4509/
+
+
