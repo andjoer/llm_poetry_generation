@@ -55,7 +55,7 @@ der dumpfe Drang des Daseins dich durch das Dasein durch die Dasein dauernd drä
 du durchschaust du durch das Dunkel des Denkens dich doch durchs Dasein dieser Dinge dir dein Dasein deutlich
 obiectiv seyn ohne Sinn oder Sinn ohne Substanz ohne Seele ohne Schönheit ohne system<br/>
 
-in colabs/llm_the_lutz a colab can be found which creates sentences according to patterns using both, predefined patterns and large language models. It is loosely inspired by Theo Lutz, who programme an Zuse Z22 so that it creates poetry according to patterns form attributed words. In this project a syntax was developed in order to define the patterns. <br/>
+in colabs/llm_theo_lutz a colab can be found which creates sentences according to patterns using both, predefined patterns and large language models. It is loosely inspired by Theo Lutz, who programme an Zuse Z22 so that it creates poetry according to patterns form attributed words https://de.wikipedia.org/wiki/Theo_Lutz.  In this project a syntax was developed in order to define the patterns. <br/>
 
 Example: <br/>
 (kant-gpt2-large)<br/>
