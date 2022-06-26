@@ -7,6 +7,7 @@ It consists out of an algorithm that tries to create metrically correct poetry t
 Example: <br/>
 
 (using gpt3)<br/>
+1)
 Jetzt erschreck ich doch ein wenig eben<br/>
 dass das Ende bald geschlagen<br/>
 Wär es Aber ich will nicht sagen .<br/>
@@ -16,7 +17,7 @@ Ich bin ich und meine Zeit zwar<br/>
 meine Zeit und sonst nichts weiter war .<br/>
 Also geh ich jetzt voll trost<br/>
 
-
+2)
 Dies frage ich , denn alles , was ich sehe <br/>
 das scheint das scheint und nur weil ich es sehe ,<br/>
 Ist es nicht so , dass lieber gar nichts wäre <br/>
