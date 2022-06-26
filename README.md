@@ -4,7 +4,7 @@ The core algorithm is model agnostic
 ## TL;DR
 ### The main project 
 It consists out of an algorithm that tries to create metrically correct poetry that also rhymes in german language. It can be tried out by using a google colabs: colabs/poetry_generation. Unfortunately it takes a bit until all packages are installed. In the colab there is also a little description and showcase of the rythm and rhyme algorithms. <br/>
-Example: <br/>
+Examples (cherry picked): <br/>
 
 (using gpt3)<br/>
 
