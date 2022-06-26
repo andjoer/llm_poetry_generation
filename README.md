@@ -7,21 +7,14 @@ It consists out of an algorithm that tries to create metrically correct poetry t
 Example: <br/>
 
 (using german-poetry-gpt-2-large)<br/>
-Zu tiefst im Menschen , daß sein Antlitz sich nicht <br/>
-Von seiner innern Schönheit scheiden möchte ?<br/>
-Ein Lächeln , von dem oft in blassen tagen<br/>
-Der Schein in blassen Zügen in den Augen<br/>
-Der Greise liegt , der in der Seele liegen<br/>
-Von sich versteckt , die ihm in Träumen lachen !<br/>
-Ein Lächeln ist die Macht , die über die bahnen<br/>
-Der Menschen , selbst der Seelen , die in Aeonen<br/>
-Nicht weiterreichen , als des Himmels hallen<br/>
-Ein Lächeln ja , ein Lächeln ist sie allein ,<br/>
-Des Mannes Blick , denn nur von ihm getragen<br/>
-Im Leben eines Menschen ist zugegen<br/>
-Die Macht , die über die Zeit und über jahrtausend<br/>
-Der Ahnen , die gesammt in ganzen Schaaren ,<br/>
-An unsern Schultern hangen mit dem gleichen<br/><br/>
+Jetzt erschreck ich doch ein wenig eben<br/>
+dass das Ende bald geschlagen<br/>
+Wär es Aber ich will nicht sagen .<br/>
+dass ich einer von den Scheuen<br/>
+die nicht vor dem Sterben sich furcht<br/>
+Ich bin ich und meine Zeit zwar<br/>
+meine Zeit und sonst nichts weiter war .<br/>
+Also geh ich jetzt voll trost<br/>
 
 There are also some interesting cases which indicate an (not perfect) awarness by the model about the letters inside of the tokens: <br/>
 
