@@ -7,6 +7,7 @@ It consists out of an algorithm that tries to create metrically correct poetry t
 Example: <br/>
 
 (using gpt3)<br/>
+
 1)
 Jetzt erschreck ich doch ein wenig eben<br/>
 dass das Ende bald geschlagen<br/>
