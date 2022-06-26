@@ -16,6 +16,13 @@ Ich bin ich und meine Zeit zwar<br/>
 meine Zeit und sonst nichts weiter war .<br/>
 Also geh ich jetzt voll trost<br/>
 
+
+Dies frage ich , denn alles , was ich sehe <br/>
+das scheint das scheint und nur weil ich es sehe ,<br/>
+Ist es nicht so , dass lieber gar nichts wäre <br/>
+Doch nein ich will nicht nichts , ich will was sehen <br/>
+Ich will nicht nur nichts , ich will etwas seien <br/>
+
 There are also some interesting cases which indicate an (not perfect) awarness by the model about the letters inside of the tokens: <br/>
 
 (using german-poetry-gpt-2-large)<br/>
