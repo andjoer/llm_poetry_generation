@@ -266,7 +266,7 @@ def start_poetry_generation(prompt,target_rythm, num_syll_lst, rhyme_scheme, sho
     start_idx = max_idx + 1
 
     for i in range(loops):
-        text, rating = generate_poetry(prompt,target_rythm, num_syll_lst, rhyme_scheme,LLM=LLM)
+        text, rating = generate_poetry(prompt,target_rythm, num_syll_lst, rhyme_scheme,LLM=LLM,LLM_rhyme=LLM_rhyme,use_tts=use_tts)
     
         with open('output/poem_' + str(start_idx + i)+'.txt', 'w') as f:
             f.write(text)

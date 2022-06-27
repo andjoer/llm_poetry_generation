@@ -225,6 +225,7 @@ def find_rhyme(verse_lst,idx1,idx2,target_rythm,last_stress = -2, detection_meth
         candidate_idx = np.argsort(distances)[:200]
 
         if use_tts: 
+            print(tts)
             spectral_diffs = []
 
             for idx in candidate_idx:
