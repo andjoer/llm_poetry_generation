@@ -83,6 +83,11 @@ Two models were trained and released: <br/>
 sia_rhyme projects words into a 128 dimensional vector space where words that rhyme are closer to each other. <br/>
 ortho_to_ipa translates words into the IPA phonetic alphabet with symbols for secondary and primary word stress. This enables an algorithm to detect the rythm of the words.<br/>
 
+### using the colab
+If you are not familary with google colaboratory, please just click the 'Run all' button. The poem generator will take some while to load and install everything.
+
+<img src="graphics/colab_en.jpg"  title="Colab en">
+<img src="graphics/colab.jpg"  title="Colab de">
 # The Algorithm
 
 ## Rhyme detection
