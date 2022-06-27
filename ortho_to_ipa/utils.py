@@ -10,8 +10,8 @@ from tensorboardX import SummaryWriter
 from torch import nn
 from tqdm import tqdm
 
-from . import hyperparams as hp
-from . decoding_helpers import Greedy, Teacher, Greedy_vectors
+import hyperparams as hp
+from decoding_helpers import Greedy, Teacher, Greedy_vectors
 
 def tokenize(text):
             return [char for char in text]

@@ -1,0 +1,11 @@
+On all datasets it was enshured that no word pairs occure more then once.
+
+rhymes.csv: All rhymes extracted from the rhyme corpus
+
+rhmyes_clean.csv: Rhymes denoised with the unsupervised rhyme detector
+
+synthetic_data_split.csv: The cleaned rhyme corpus was taken and some rhyme pairs had been removed. On the removed pairs the last letters of the second word had been shuffled in order to create synthethic non rhyming pairs. These pairs again had been filtered so that no rhyming pairs are within them. After this synthetic data was merged with the corpus data. 
+
+synthetic_data_noisy_split.csv: The raw rhyme corpus was taken and some rhyme pairs had been removed. On the removed pairs the last letters of the second word had been shuffled in order to create synthethic non rhyming pairs. These pairs again had been filtered so that no rhyming pairs are within them. After this synthetic data was merged with the corpus data. 
+
+synthetic_data.csv: The cleaned rhyme corpus was taken and some rhyme pairs had copied. On the copied pairs the last letters of the second word had been shuffled in order to create synthethic non rhyming pairs. These pairs again had been filtered so that no rhyming pairs are within them. After this synthetic data was merged with the corpus data. 

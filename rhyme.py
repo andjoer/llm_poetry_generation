@@ -259,13 +259,18 @@ def find_rhyme(verse_lst,idx1,idx2,target_rythm,last_stress = -2, detection_meth
             best_idx = candidate_idx[np.argmin(np.asarray(spectral_diffs))]  
 
         else:
-            best_idx = np.argmin(distances) 
+            candidates = np.argsort(distances)
+
+            for candidate in candidates: 
+                if distances[candidate] > 0:
+                    best_idx = candidate
+                    break
             
                 
         print('found via sia rhyme')
         print(sent_pairs[best_idx][0])
         print(sent_pairs[best_idx][1])
-        print('distance: ' + str(np.amin(distances)))
+        print('distance: ' + str(distances[best_idx]))
         
         if not found: 
             bi_selection = sent_pairs[best_idx][0]

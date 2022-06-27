@@ -145,7 +145,7 @@ das große Lachen
 prompt_15 = ['''über den Feldhamster Karl und den Philosophen Kant:
 ''',[9,8],trochee]
 
-def generate_poetry(prompt,target_rythm, num_syll_lst, rhyme_scheme, shots = 1, LLM='GPT2-large', LLM_rhyme='GPT3', use_tts = True,num_lines = 15):
+def generate_poetry(prompt,target_rythm, num_syll_lst, rhyme_scheme, shots = 1, LLM='GPT2-large', LLM_rhyme='GPT2-large', use_tts = True,num_lines = 15):
     
     if rhyme_scheme:
         rhyme_scheme_print = rhyme_scheme
@@ -285,17 +285,17 @@ if __name__ == "__main__":
     for i in range(1000):  
         rhyme_schemes = ['aabb','abba','abab']
         LLMS = ['GPT2-large']
-        prompts = [prompt_2,prompt_3,prompt_4,prompt_5,prompt_6,prompt_7,prompt_8,prompt_9,prompt_10,prompt_11,prompt_12,prompt_13]
+        prompts = [prompt_2,prompt_3,prompt_5,prompt_7,prompt_8,prompt_10,prompt_11,prompt_12,prompt_13]
   
         prompt = random.choice(prompts)
         num_syll = prompt[1]
         rythm = prompt[2] 
-        prompt_text = prompt[0]#prompts[rand]
+        prompt_text = prompt[0] + ' \n Titel: Warum ist etwas und nicht nur nichts \n'
         
  
 
         #LLM = random.choice(LLMS)
-        LLM = 'GPT3'
+        LLM = 'GPT2-large'            # debug
 
         if LLM == 'GPT3':
             prompt_text = 'schreibe ein Gedicht auf Deutsch \n' + prompt_text + ' \n Titel: Warum ist etwas und nicht nur nichts \n'

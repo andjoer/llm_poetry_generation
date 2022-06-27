@@ -54,7 +54,7 @@ def gpt_poet(input_text, target_rythm,num_syll,title_accepted,tollerance = 4,LLM
             input_text_new = input_text[-len_past:]
             input_text_title = input_text[-len_past:]
             
-        if cnt > 20:
+        if cnt > 9:
             return '**'
 
         cnt += 1

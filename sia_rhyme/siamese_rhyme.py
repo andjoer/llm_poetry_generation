@@ -1,10 +1,10 @@
 from torch.optim import Adam
 import torch
 
-from utils import train, sequence_to_text, text_to_sequence, predict, word_to_vec, get_distance, get_distance_vec
-import hyperparameters as hp
+from sia_utils import train, sequence_to_text, text_to_sequence, predict, word_to_vec, get_distance, get_distance_vec
+import sia_hyperparameters as hp
 
-from models import SiameseRNN, vec_distance
+from sia_models import SiameseRNN, vec_distance
 
 import os
 #from sgdr import SGDRScheduler
@@ -54,7 +54,7 @@ class siamese_rhyme:
         batch_size = hp.batch_size
         device = hp.device
 
-        self.words = Field(tokenize=tokenize, init_token='<sos>', eos_token='<eos>',fix_length=20)
+        self.words = Field(tokenize=tokenize, init_token='<sos>', eos_token='<eos>',fix_length=hp.max_len)
         self.labels = LabelField(dtype=torch.long, batch_first=True, sequential=False)
 
 

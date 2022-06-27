@@ -1,8 +1,8 @@
 import torch
 from torch import nn
 
-from . attention import LuongAttention
-from . import hyperparams as hp
+from attention import LuongAttention
+import hyperparams as hp
 
 
 class Encoder(nn.Module):

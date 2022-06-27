@@ -2,11 +2,11 @@ from torch.optim import Adam
 import torch
 
 #import hyperparams as hp
-from . import hyperparams as hp
+import hyperparams as hp
 import os
-from  . models import Encoder, Decoder, Seq2Seq
-from . sgdr import SGDRScheduler
-from  . utils import train, translate, return_vectors
+from  models import Encoder, Decoder, Seq2Seq
+from sgdr import SGDRScheduler
+from utils import train, translate, return_vectors
 
 
 from torchtext.legacy.data import Field, BucketIterator, TabularDataset

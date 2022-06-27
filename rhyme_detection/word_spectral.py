@@ -111,8 +111,10 @@ class wordspectrum:
             sound = AudioSegment.from_mp3(self.fname+'.mp3')
             os.remove(self.fname + '.mp3')
             sound.export(self.fname+'.wav', format='wav')
+        
             
         wavfn= self.fname+'.wav'
+   
         y, sr = librosa.load(wavfn)
 
         non_zero = np.where(np.absolute(y)>thresh)
