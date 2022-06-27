@@ -88,6 +88,8 @@ If you are not familary with google colaboratory, please just click the 'Run all
 
 <img src="graphics/colab_en.jpg"  title="Colab en">
 <img src="graphics/colab.jpg"  title="Colab de">
+
+
 # The Algorithm
 
 ## Rhyme detection
