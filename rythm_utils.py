@@ -45,6 +45,10 @@ jambus = [0,1]
 
 
 class verse_cl():
+
+    '''
+    stores a verse and it's metric and grammatical properties
+    '''
     def __init__(self, text):
         if type(text) == list:
             self.text = text
@@ -86,7 +90,7 @@ class verse_cl():
         self.update_token_dict()
 
 
-    def get_rythm_sent(self):
+    def get_rythm_sent(self): # get the rythm of a verse
         
         #stressed_list = ['NOUN','VERB','AUX','ADJ','PROPN','ADV','PERSON']
         #unstressed_list = ['CCONJ','CONJ','DET','PART','SCONJ','CCONJ']
@@ -97,21 +101,21 @@ class verse_cl():
         rythm = []
         for token in doc:
             if token.text.isalpha():
-                stress = list(get_rythm(token.text))
+                stress = list(get_rythm(token.text))    
                 try:
-                    if stress == [0.5] and (token.pos_ in stressed_list):
+                    if stress == [0.5] and (token.pos_ in stressed_list):   # if the word contains meaning
                         stress = [1]
                 except:
                     pass
 
                 try:
-                    if stress == [0.5] and (token.pos_ in unstressed_list):
+                    if stress == [0.5] and (token.pos_ in unstressed_list):  # if the word contains no meaning
                         stress = [0]
                 except:
                     pass
 
                 try:
-                    if token.text in voca_list:
+                    if token.text in voca_list:               # if the stress of the word is ambiguous
                         stress = [0.5]
                 except:
                     pass
@@ -140,10 +144,10 @@ def nearest_idx(arr, val):
     return idx
 
 
-def get_rythm(word_ortho):
+def get_rythm(word_ortho):        # get the rythm of a word
     word_ortho = word_ortho.lower()
     word_ortho = re.sub(r'[^a-zäöüß]', '', word_ortho)
-    word = ipa_from_ortho(word_ortho)
+    word = ipa_from_ortho(word_ortho)     # convert the word into ipa symbols (if they are in the table, look them up, else do it with the neural net)
     word = clean_ipa(word)
     prim_stress = word.find("ˈ")
     if prim_stress == -1:
@@ -152,7 +156,7 @@ def get_rythm(word_ortho):
     else:
         sec_stress = [match.start(0) for match in re.finditer(sec_stress_sep, word)]
 
-        syllabs = hyp_dic.inserted(word_ortho, ' ').split()
+        syllabs = hyp_dic.inserted(word_ortho, ' ').split()        # hyphenate the word
 
 
 
@@ -162,7 +166,7 @@ def get_rythm(word_ortho):
 
         splits = np.asarray(splits)
         rythm = np.zeros(len(splits))
-        idx_prim_stress = nearest_idx(splits,prim_stress)    
+        idx_prim_stress = nearest_idx(splits,prim_stress)    # approximate in which syllables the primary and secondary stress would be 
         rythm[idx_prim_stress] = 1
         for sec_idx in sec_stress:
             idx_sec_stress = nearest_idx(splits,sec_idx)
@@ -170,7 +174,7 @@ def get_rythm(word_ortho):
 
         return rythm
 
-def rythm_comp_adaptive(rythm,target_rythms,adaptive = False):
+def rythm_comp_adaptive(rythm,target_rythms,adaptive = False): # flexible length
     match = False
 
     if type(target_rythms[0]) not in  [list, np.ndarray]:
@@ -260,7 +264,10 @@ def get_all_comb(value_lst,target):
 '''
 
 def get_single_comb(value_lst, amount, intersection, min_syll, toll = 5):        # this could be improved, the goal is an unperfect result with a minimum of computational time
+    '''
+    returns a single solution how a given sequence could be shortened to a given amount
 
+    '''
     total_rm = 0
  
     rm_idx = []

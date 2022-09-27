@@ -6,6 +6,9 @@ import pyphen
 hyp_dic = pyphen.Pyphen(lang='de_DE')
 
 def colone_phonetics(tokens):
+    '''
+    returns the colone phonetics for a string of letters
+    '''
     colone_phonetics = []
     tokens = tokens.lower()
     subst_list = []

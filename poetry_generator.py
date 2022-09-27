@@ -146,6 +146,20 @@ prompt_15 = ['''über den Feldhamster Karl und den Philosophen Kant:
 ''',[9,8],trochee]
 
 def generate_poetry(prompt,target_rythm, num_syll_lst, rhyme_scheme, shots = 1, LLM='GPT2-large', LLM_rhyme='GPT2-large', use_tts = True,num_lines = 15):
+    '''
+    contains the main loop that generates the peoms
+    takes: 
+    prompt: the prompt that will be forwarded to the llm
+    target_rythm: the target rythm (jambus or trochee)
+    num_syll_lst: a list that contains the number of syllables in each verse. Once the list ends it will be read 
+                 from the beginning again
+    rhyme_scheme: the rhyme scheme
+    shots: number of candidate verses to generate for each resulting verse
+    LLM: the llm that should be used 
+    LLM_rhyme: the llm that should be used to generate alternative verse endings
+    use_tts: Use the mffc-feature method in order to check the results from the sia-rhyme method
+    num_lines: number of verses to generate
+    '''
     
     if rhyme_scheme:
         rhyme_scheme_print = rhyme_scheme
@@ -155,7 +169,8 @@ def generate_poetry(prompt,target_rythm, num_syll_lst, rhyme_scheme, shots = 1, 
         
     else:
         rhyme_scheme_print = 'No Rhyme'
-    freq = len(rhyme_scheme)  
+
+    freq = len(rhyme_scheme)  # number of verses per strophe
 
     input_text = prompt
 
@@ -183,9 +198,9 @@ def generate_poetry(prompt,target_rythm, num_syll_lst, rhyme_scheme, shots = 1, 
         num_syll = num_syll_lst[cnt%len(num_syll_lst)]
 
         for j in range(shots):
-            line = gpt_poet(input_text,target_rythm,num_syll,title_accepted,LLM=LLM)
+            line = gpt_poet(input_text,target_rythm,num_syll,title_accepted,LLM=LLM)  # generate a new verse
 
-            if line[:2] == '##':
+            if line[:2] == '##':                                          # no text has been created, but maybe a new title
                 offset += cnt
                 cnt = 0
                 input_text += line +'\n'
@@ -195,36 +210,32 @@ def generate_poetry(prompt,target_rythm, num_syll_lst, rhyme_scheme, shots = 1, 
                 break
 
             elif line =='**':                                   
-                if j > 1 and not tmp_lst or shots == 1:                         # we could try again but  we basically tried enough             
+                if j > 1 and not tmp_lst or shots == 1:                         # we could try again but  we basically tried enough  -> stop           
                     return print_text, rating
 
             else:        
                 verse_tmp = verse_cl(line)
                 verse_tmp.context = input_text[-100:]
-                verse_tmp = fix_rythm(verse_tmp,target_rythm,num_syll)
-                perp_lst.append(perplexity(input_text[-200:] + ' '.join(verse_tmp.text)))
+                verse_tmp = fix_rythm(verse_tmp,target_rythm,num_syll)          # fix the rythm of the generated verse
+                perp_lst.append(perplexity(input_text[-200:] + ' '.join(verse_tmp.text))) # measure the perplexity of the verse
 
                 tmp_lst.append(verse_tmp)
 
         if not is_title:
             title_accepted = False
-            if perp_lst:
-                best_idx = np.argmin(np.asarray(perp_lst))
+            if perp_lst:                                            
+                best_idx = np.argmin(np.asarray(perp_lst))          # choose the candidate verse with the least perplexity
                 verse = tmp_lst[best_idx]
 
             else: 
                 return print_text, rating 
 
-            #verse = verse_cl(line)
-            #verse.context = input_text[-100:]
-
-            #verse = fix_rythm(verse,target_rythm,num_syll)
             
             verse_lst.append(verse)
             
-            if rhyme_scheme and rhyme_scheme[cnt%freq] != -1:
+            if rhyme_scheme and rhyme_scheme[cnt%freq] != -1:  # if rhyme partner already exists
      
-                verse_lst = find_rhyme(verse_lst,offset + int(int(cnt/freq)*freq+rhyme_scheme[cnt%freq]),cnt,target_rythm,LLM=LLM_rhyme,use_tts=use_tts)
+                verse_lst = find_rhyme(verse_lst,offset + int(int(cnt/freq)*freq+rhyme_scheme[cnt%freq]),cnt,target_rythm,LLM=LLM_rhyme,use_tts=use_tts) # generate the rhyming verse endings
                 input_text = input_text_0
                 print_text = ''
                 for verse in verse_lst:
@@ -251,6 +262,11 @@ def generate_poetry(prompt,target_rythm, num_syll_lst, rhyme_scheme, shots = 1, 
 
 
 def start_poetry_generation(prompt,target_rythm, num_syll_lst, rhyme_scheme, shots = 1, loops = 1, LLM='GPT2-large', LLM_rhyme='GPT2-large', use_tts = False):
+    '''
+    function that can be called from an other program 
+    or a jupyter notebook
+    
+    '''
 
     if LLM == 'GPT3':
         prompt = 'schreibe ein Gedicht auf Deutsch ' + prompt
@@ -273,24 +289,28 @@ def start_poetry_generation(prompt,target_rythm, num_syll_lst, rhyme_scheme, sho
 
 
 if __name__ == "__main__":  
+    '''
+    start the program
+    
+    '''
     sys.stdout = Logger()
     files = glob.glob("logs/*.log")
     max_idx = 0
     for file in files: 
-        max_idx = max(int(re.findall(r'\d+', file)[0]),max_idx)
+        max_idx = max(int(re.findall(r'\d+', file)[0]),max_idx)    # find the number of the last log file
 
     
     start_idx = max_idx + 1
     print(start_idx)
     for i in range(1000):  
-        rhyme_schemes = ['aabb','abba','abab']
-        LLMS = ['GPT2-large']
-        prompts = [prompt_2,prompt_3,prompt_5,prompt_7,prompt_8,prompt_10,prompt_11,prompt_12,prompt_13]
+        rhyme_schemes = ['aabb','abba','abab']              # rhyme schemes to sample from
+        LLMS = ['GPT2-large']                               # llms to dample from
+        prompts = [prompt_2,prompt_3,prompt_5,prompt_7,prompt_8,prompt_10,prompt_11,prompt_12,prompt_13] # prompt to sample from
   
         prompt = random.choice(prompts)
-        num_syll = prompt[1]
+        num_syll = prompt[1]                       # the metric properties are defined in the prompt
         rythm = prompt[2] 
-        prompt_text = prompt[0] + ' \n Titel: Warum ist etwas und nicht nur nichts \n'
+        prompt_text = prompt[0] + ' \n Titel: Warum ist etwas und nicht nur nichts \n' # title of the created poem
         
  
 

@@ -26,6 +26,17 @@ def clean_word(word):
     return re.sub('[^a-zäöüß]', '', word.lower())
 
 def get_synonyms_cand(verse,tok_id,target_rythms,adaptive=False,after = False,verse_end = False,max_cand = 50, top_k = 150):
+    '''
+    get synonym candidates
+    takes
+    verse: input verse
+    tok_id: token id that should be replaced
+    target_rythms: the target rythm
+    adaptive: if the syllable count is fixed (False) or flexible (True)
+    verse_end: if the synonym is at the end of a verse
+    max_cand: the maximum count of candiates to return
+    top_k: number of candidates BERT creates 
+    '''
     text = ''
     unmasker = pipeline('fill-mask', model = bert_model, top_k = top_k,framework='pt')
     if tok_id > -1:
@@ -71,7 +82,7 @@ def get_synonyms_cand(verse,tok_id,target_rythms,adaptive=False,after = False,ve
             chunks[mask_idx] = word
             text_pred = ' '.join(chunks)
              
-            if len(word) > 1 and word != 'unk' and word not in verse.text:
+            if len(word) > 1 and word != 'unk' and word not in verse.text: # if it is a valid candidate
             
                 doc = nlp(text_pred)
                 tok_id = [token.i for token in doc if token.text == word and abs(token.i - mask_idx) < 3][0]
@@ -82,8 +93,9 @@ def get_synonyms_cand(verse,tok_id,target_rythms,adaptive=False,after = False,ve
                         proceed = False
 
                 if ((doc[tok_id].pos_ == token_pos and doc[tok_id].morph == morphology) or i > 0 or after) and proceed:   # the second loop is in case spacy detected for example a propn instead of an adv
+                                                                                                            # check if the candidate has the same grammatical properties
                     
-                    if list(rythm )== [0.5]:
+                    if list(rythm ) == [0.5]:
 
                         if doc[tok_id].pos_ in stressed_list: 
                             if not (doc[tok_id].dep_ == 'mo' and len(doc[tok_id].text)<3):
@@ -94,7 +106,7 @@ def get_synonyms_cand(verse,tok_id,target_rythms,adaptive=False,after = False,ve
 
                     if target_rythms:
                        
-                        if rythm_comp_adaptive(rythm,target_rythms,adaptive):
+                        if rythm_comp_adaptive(rythm,target_rythms,adaptive):  # the rythm of the synonym has to be correct
                           
                             candidates.append(word)
                             perp = perplexity(' '.join(text_pred.split()))
@@ -114,6 +126,9 @@ def get_synonyms_cand(verse,tok_id,target_rythms,adaptive=False,after = False,ve
     return candidates, candidates_perp, found_correct
                
 def get_synonym(verse,tok_id,target_rythms,adaptive = False,verbose = False,after=False,verse_end = False):
+    '''
+    return a synonym for a given inmput
+    '''
 
     perp_0 = perplexity(' '.join(str(verse.doc).split()))
 
@@ -122,7 +137,7 @@ def get_synonym(verse,tok_id,target_rythms,adaptive = False,verbose = False,afte
     if candidates:
         candidates_perp = np.asarray(candidates_perp)
         best_idx = np.argmin(candidates_perp)
-        best_candidate = candidates[best_idx]
+        best_candidate = candidates[best_idx] # choose the candidate for which gpt2 gave the best perplexity
 
         if not verbose:
             return best_candidate
@@ -204,6 +219,9 @@ def bidirectional_synonyms_single(verse,last_idx,context_aft, target, num_out = 
 
 
 def bidirectional_synonyms(verse,context_aft, target_rythm, num_out = 50):
+    '''
+    create alternative endings for a verse
+    '''
 
 
     for i in range(1,len(verse.text)):

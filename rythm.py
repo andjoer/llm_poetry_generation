@@ -27,7 +27,7 @@ nlp = spacy.load("de_core_news_lg")
 jambus = [0,1]
 
 
-def token_compliance(verse, target_rythm):   
+def token_compliance(verse, target_rythm):   # check if a word could theoretically have the correct rythm
     if len(target_rythm )== 2:
         target_rythms = [[0,1],[1,0]]
     else:
@@ -264,7 +264,7 @@ def fix_shifted_rythm(verse,target_rythm, len_window = 6,target_len = 10):
 
     return verse
 
-def extend_verse(verse,target_rythm,target_len):
+def extend_verse(verse,target_rythm,target_len): # extend the verse
 
     while len(verse.rythm) <= (target_len-len(target_rythm)):
         target_rythm_ext = extend_target_rythm(verse.rythm,target_rythm)
@@ -272,17 +272,17 @@ def extend_verse(verse,target_rythm,target_len):
         perplexities = []
         text = []
         cut = None
-        if not verse.doc[-1].is_alpha:
+        if not verse.doc[-1].is_alpha: # if the last token is not a letter 
             cut = -1
-        for token_idx, token in enumerate(verse.doc[:cut]):
-
+        for token_idx, token in enumerate(verse.doc[:cut]):  # for every token try to fill a word in front of it
+    
             tok_tar_rythms = [target_rythm_ext[verse.token_starts[token_idx]:verse.token_starts[token_idx]+len(target_rythm)]]
-            fill_word, perp, _ =  get_synonym(verse,token_idx-1,tok_tar_rythms,after=True,verbose = True)
+            fill_word, perp, _ =  get_synonym(verse,token_idx-1,tok_tar_rythms,after=True,verbose = True) # also get the perplexities
             fill_words.append(fill_word)
             perplexities.append(perp)
             text.append(token.text)
 
-        best_idx = perplexities.index(min(perplexities))
+        best_idx = perplexities.index(min(perplexities)) # get the solution with the lowest perplexity
         text = text[:best_idx] + [fill_words[best_idx]] + text[best_idx:]
 
         if cut: 
@@ -828,11 +828,16 @@ def shorten(verse,num_remove, min_syll = 3, toll = 8): # minimum syllables to re
 
 
 def fix_rythm(verse,target_rythm,num_syllabs):
-    
-    #token_compliance(verse,jambus)
+    '''
+    fix the rythm of a verse
+    takes:
+    verse: verse to fix
+    target_rythm: the metrum 
+    num_syllabs: number of syllables the verse should have
+    '''
     num_rm = len(verse.rythm) - num_syllabs
 
-    if num_rm > 15:
+    if num_rm > 15:                                         # if the difference is too large, use a simpler method due to run time
         idx_shorten = shorten(verse,num_rm-15)
         print(idx_shorten)
         verse = remove_verse_tokens(verse,idx_shorten)
@@ -844,21 +849,21 @@ def fix_rythm(verse,target_rythm,num_syllabs):
 
    
 
-    while (len(verse.rythm) > num_syllabs) or difference > 0:
+    while (len(verse.rythm) > num_syllabs) or difference > 0: # while the metrum ist not correct
         print(target_rythm)
         print(num_syllabs)
         print(verse.text)
         print(verse.rythm)
 
-        num_rm = len(verse.rythm) - num_syllabs+2
+        num_rm = len(verse.rythm) - num_syllabs+2               # number of syllables to remove
         if num_rm == num_rm_0:                                      #avoiding infinite loops of adding and removing
             num_rm += 1
         print(num_rm)
         if num_rm > 0:
             print('shortening')
-            combs = remove_token(verse,num_rm)
-            verse = find_opt_rythm(verse,combs,target_rythm)
-        verse = fix_shifted_rythm(verse,target_rythm, target_len = num_syllabs)
+            combs = remove_token(verse,num_rm)                    # get possible combinations of words that could be removed
+            verse = find_opt_rythm(verse,combs,target_rythm)      # find the metrically best option
+        verse = fix_shifted_rythm(verse,target_rythm, target_len = num_syllabs)    # correct metrically incorrect syllables
         print(verse.text)
         difference = compare_verse_rythm(verse,target_rythm)
         num_rm_0 = num_rm
@@ -868,7 +873,7 @@ def fix_rythm(verse,target_rythm,num_syllabs):
 
     if len(verse.rythm)  < num_syllabs:
         print('enter extension')
-        verse = extend_verse(verse,target_rythm,num_syllabs)
+        verse = extend_verse(verse,target_rythm,num_syllabs)  # exend the verse
     return verse
 
 

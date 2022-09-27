@@ -28,8 +28,11 @@ def get_last_idx(word_lst_inp):
 
     return None
 
-def find_rhyme(verse_lst,idx1,idx2,target_rythm,last_stress = -2, detection_method ='neural',LLM='GPT2',use_tts = False,return_alternatives=False):
+def find_rhyme(verse_lst,idx1,idx2,target_rythm,last_stress = -2, detection_method ='neural',LLM='GPT2',use_tts = False, use_colone = False, return_alternatives=False):
 
+    '''
+    finds rhyming endings for two verses 
+    '''
     print('--- looking for rhymes ---')
     print('using ' + str(LLM))
     print(' '.join(verse_lst[idx1].text))
@@ -40,7 +43,7 @@ def find_rhyme(verse_lst,idx1,idx2,target_rythm,last_stress = -2, detection_meth
     for i in range(idx1+1,idx2+1):
         context_aft += ' '.join(verse_lst[i].text) + '\n'
 
-    bi_syns = bidirectional_synonyms(verse_lst[idx1],context_aft, target_rythm)
+    bi_syns = bidirectional_synonyms(verse_lst[idx1],context_aft, target_rythm) # alternatives for the first verse
 
     if verse_lst[idx1].text[-1].isalpha():
         last = -1
@@ -55,7 +58,7 @@ def find_rhyme(verse_lst,idx1,idx2,target_rythm,last_stress = -2, detection_meth
         causal_syns += gpt_synonyms(verse_lst[idx2],target_rythm,LLM=LLM)[1:]        
 
         if len(causal_syns) < 20:
-            causal_syns = gpt_synonyms(verse_lst[idx2],target_rythm,num_remove = 3,LLM=LLM)
+            causal_syns = gpt_synonyms(verse_lst[idx2],target_rythm,num_remove = 3,LLM=LLM)       # alternatives for the second verse
 
     else:
         causal = False
@@ -116,7 +119,7 @@ def find_rhyme(verse_lst,idx1,idx2,target_rythm,last_stress = -2, detection_meth
         print(bi_syns)
 
 
-    for word_pair in word_pairs:
+    for word_pair in word_pairs:            # compare with colone phonetics
             word_1 = word_pair[0]
             word_2 = word_pair[1]
 
@@ -127,8 +130,8 @@ def find_rhyme(verse_lst,idx1,idx2,target_rythm,last_stress = -2, detection_meth
             differences.append(difference)
             #idx.append([' '.join(sent_1),sent_2])
 
-    if np.amin(np.asarray(differences)) < 1:
-        best_idx = np.argmin(np.asarray(differences))
+    if np.amin(np.asarray(differences)) < 1:           # a match in colone phonetics is only valid below a distance of 1
+        best_idx = np.argmin(np.asarray(differences))                    # best match according to colone phonetics
         bi_selection = sent_pairs[best_idx][0] #pairs[best_idx][0]
         causal_selection = sent_pairs[best_idx][1] #pairs[best_idx][1]
         found = True
@@ -200,17 +203,17 @@ def find_rhyme(verse_lst,idx1,idx2,target_rythm,last_stress = -2, detection_meth
 
         
 
-    if not found and len(causal_syns)*len(bi_syns) < 10:            # leave it as it is; unprobable to find a rhyme
+    ''' if not found and len(causal_syns)*len(bi_syns) < 10:            # leave it as it is; unprobable to find a rhyme
         print('rhyme not found')
         found = True
         bi_selection = ' '.join(bi_syns[-1])
-        causal_selection = causal_syns[0]     
+        causal_selection = causal_syns[0]     '''
 
-    if  True:#not found:
+    if  not found or not use_colone: # use the sia rhyme apporach
         vector_pairs = []
         for word_pair in word_pairs:
 
-            vector_pairs.append([rhyme_model.get_word_vec(word_pair[0]),rhyme_model.get_word_vec(word_pair[1])])
+            vector_pairs.append([rhyme_model.get_word_vec(word_pair[0]),rhyme_model.get_word_vec(word_pair[1])]) # vectorize the words
             #causal_vecs.append(rhyme_model.get_word_vec(word_pair[0]))
 
         distances = []
@@ -220,7 +223,7 @@ def find_rhyme(verse_lst,idx1,idx2,target_rythm,last_stress = -2, detection_meth
                                                                     
             distances.append(distance[0])
 
-        distances = np.asarray(distances)
+        distances = np.asarray(distances) # distances between each possible combination
 
         candidate_idx = np.argsort(distances)[:200]
 
@@ -236,7 +239,7 @@ def find_rhyme(verse_lst,idx1,idx2,target_rythm,last_stress = -2, detection_meth
                 if word_1 != word_2:
                 
                     try:
-                        spec_1 = wordspectrum(word_1)
+                        spec_1 = wordspectrum(word_1)                            # calculate the mfcc features for each word
                         spec_2 = wordspectrum(word_2)
                         mean, _ = check_rhyme(spec_1,spec_2,
                                                             features = 'mfccs',
@@ -255,16 +258,16 @@ def find_rhyme(verse_lst,idx1,idx2,target_rythm,last_stress = -2, detection_meth
                 else: mean = 1000
             
 
-                spectral_diffs.append(mean)
+                spectral_diffs.append(mean)                 # calculate the distances between the mfcc vectors for each word
 
-            best_idx = candidate_idx[np.argmin(np.asarray(spectral_diffs))]  
+            best_idx = candidate_idx[np.argmin(np.asarray(spectral_diffs))]  # choose the pair with the lowest distance
 
         else:
             candidates = np.argsort(distances)
 
             for candidate in candidates: 
                 if distances[candidate] > 0:
-                    best_idx = candidate
+                    best_idx = candidate                       # if no mffc features are used, use the minimum distance in the vectorspace of sia rhyme
                     break
             
                 

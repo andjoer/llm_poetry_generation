@@ -22,7 +22,9 @@ def clean_word(word):
     return re.sub('[^a-zäöüß]', '', word.lower())
     
 def gpt_poet(input_text, target_rythm,num_syll,title_accepted,tollerance = 4,LLM = 'GPT2-large'):
-
+    '''
+    generate a new verse with a matching metrum
+    '''
     len_past = 450
     if LLM == 'GPT2-large':
         LLM_poet = gpt2
@@ -50,16 +52,16 @@ def gpt_poet(input_text, target_rythm,num_syll,title_accepted,tollerance = 4,LLM
     rythm_comp = [0]
     while True:
 
-        if cnt % 4 == 0:
+        if cnt % 4 == 0:                                # if there are more then 4 tries, start again
             input_text_new = input_text[-len_past:]
             input_text_title = input_text[-len_past:]
             
-        if cnt > 9:
+        if cnt > 9:                                     # if there are more then 10 tries, stop the complete poem
             return '**'
 
         cnt += 1
         print(cnt)
-        generated = LLM_poet(input_text_new, max_length= 20,num_return_sequences=20)
+        generated = LLM_poet(input_text_new, max_length= 20,num_return_sequences=20) # generate from teh prompt
         candidates_ends = []
         candidates = []
 
@@ -70,13 +72,13 @@ def gpt_poet(input_text, target_rythm,num_syll,title_accepted,tollerance = 4,LLM
             
             
 
-            lines = text.split('\n')
+            lines = text.split('\n')         # only one verse, so cut the rest from the generation
         
             idx_0 = -1
             line = ''
             
             for line_tmp in lines:
-                if 'titel' in line_tmp.lower():
+                if 'titel' in line_tmp.lower():          # if the line begins with "titel"
                         if title_accepted:
                             return '##'+line_tmp
 
@@ -87,7 +89,7 @@ def gpt_poet(input_text, target_rythm,num_syll,title_accepted,tollerance = 4,LLM
                             line = line_tmp.strip()
                             break
 
-            if line:
+            if line:                   # if a valid verse was created
                 
                 verse = verse_cl(new_text + line)
                 rythm = np.asarray(verse.rythm)
@@ -98,7 +100,7 @@ def gpt_poet(input_text, target_rythm,num_syll,title_accepted,tollerance = 4,LLM
                 enter_idx = len(verse.text)
 
                 if np.sum(comp) != 0:
-                    problem_idx = np.amin(np.where(comp != 0)[0])
+                    problem_idx = np.amin(np.where(comp != 0)[0])            # where to cut the verse since the metrum gets incorrect
                     token_idx = verse.token_dict[problem_idx]
 
                 else:
@@ -106,24 +108,30 @@ def gpt_poet(input_text, target_rythm,num_syll,title_accepted,tollerance = 4,LLM
 
                 if token_idx <= enter_idx and verse.token_ends[-1] < num_syll - 3:
 
-                    candidates.append(' '.join(verse.text[:token_idx]))
+                    candidates.append(' '.join(verse.text[:token_idx]))                 
                     candidates_ends.append(token_idx)
-                    rythm_comp = rythm
+                    rythm_comp = rythm                     
                     
                 if len(rythm) > 0:                                                                               # rythm has no [-1]
-                    if np.sum(comp) == 0 and rythm[-1] == last and len(verse.rythm) <= num_syll and len(verse.rythm) >= num_syll*0.65:
+                    if np.sum(comp) == 0 and rythm[-1] == last and len(verse.rythm) <= num_syll and len(verse.rythm) >= num_syll*0.65: # if the resulting verse is long enough: finsihed
 
                         return re.sub('[.].','',' '.join(verse.text[:token_idx])) + '\n'
                
 
         if candidates:
-            best_idx = np.argmax(np.asarray(candidates_ends))
+            best_idx = np.argmax(np.asarray(candidates_ends))           # choose the candidate that is the longest
 
             new_text +=  candidates[best_idx] + ' '
             input_text_new = input_text_title + ' '+ new_text 
             
                
 def gpt_synonyms(verse,target_rythm,num_remove=2,LLM='GPT2-large'):
+
+    '''
+    create alternative Verse endings
+    '''
+
+
     lines = [' '.join(verse.text)]
     '''if verse.text[-1].isalpha():
         input_text = verse.text[:-num_remove]
@@ -166,7 +174,7 @@ def gpt_synonyms(verse,target_rythm,num_remove=2,LLM='GPT2-large'):
                 rythm =  np.asarray(verse_tmp.rythm)
                 
                 if len(rythm) == len(target_rythm_ext):
-                    comp = np.abs((target_rythm_ext-rythm) * (rythm != 0.5))
+                    comp = np.abs((target_rythm_ext-rythm) * (rythm != 0.5))      # check if the rythm is correct
 
                     if np.sum(comp) == 0:
                         lines.append(input_text  + ' ' + line)
