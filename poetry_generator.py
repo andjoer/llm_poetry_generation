@@ -17,7 +17,7 @@ import sys
 
 
 ######################################
-jambus = [0,1]
+jambus = [0,1]                        # defining the metric patterns
 trochee = [1,0]
 ######################################
 
@@ -28,7 +28,7 @@ Frühling, Frühling soll es sein!
 Waldwärts Hörnerklang geschossen,
 Mutger Augen lichter Schein;
 Und das Wirren bunt und bunter
-''',[10],trochee]
+''',[10],trochee]                                     # a prompt is a list of a text followed by the syllable list and the meter
 
 # Friedrich Schiller Die Künstler
 prompt_2 = ['''Nur durch das Morgentor des Schönen

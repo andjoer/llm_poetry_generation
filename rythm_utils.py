@@ -193,7 +193,7 @@ def rythm_comp_adaptive(rythm,target_rythms,adaptive = False): # flexible length
     return match
 
 def subset_sum(numbers, target, partial=[],partial_sum=0):
-    # richard fern; stackoverflow question 4632322
+    # suggested by richard fern; stackoverflow question 4632322
     if partial_sum == target:
         yield partial
     if partial_sum >= target:
