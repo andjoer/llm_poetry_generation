@@ -468,7 +468,7 @@ def gpt_sample_synonyms(verse,target_rythm,num_remove=2, max_length = 10, LLM=No
                     target_rythm_ext = np.asarray(extend_target_rythm(verse_tmp.rythm,target_rythm))
             
 
-            if len(rythm) > len(target_rythm_ext) and allow_pos_match and not len(target_rythm) == 0 and not use_pos and eol:
+            if len(verse_tmp.rythm) > len(target_rythm_ext) and allow_pos_match and not len(target_rythm) == 0 and not use_pos and eol:
                 verse_tmp.shorten(len(verse_clean)-num_remove)
                 print('verse ending too long')
                 condition = False

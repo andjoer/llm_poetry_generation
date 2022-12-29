@@ -214,11 +214,14 @@ def gpt_sample_systematic(verse,LLM,num_return_sequences = 100,loop_limit = 1000
         prompt = '<|endoftext|>'
     tokenizer = LLM.tokenizer#GPT2Tokenizer.from_pretrained(LLM[0])
     model = LLM.model#GPT2LMHeadModel.from_pretrained(LLM[1]).to('cuda')
-
+    stop_tokens = []
     if stop_tokens:
-        stop_tokens = [tokenizer.encode(stop_token)[0] for stop_token in stop_tokens]
-    else:
-        stop_tokens = []
+        if '\n' in stop_tokens:          # fix for google colab; no explanation for the bug currently
+            stop_tokens.remove['\n']
+            stop_tokens = [199]    
+        stop_tokens += [tokenizer.encode(stop_token)[0] for stop_token in stop_tokens]
+ 
+        
 
    
     block_tokens_alpha = LLM.block_tokens

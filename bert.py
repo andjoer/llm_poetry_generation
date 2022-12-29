@@ -5,6 +5,7 @@ import math
 import spacy
 import pandas as pd
 from perplexity import perplexity
+import torch
 
 from spacy.lang.de.examples import sentences 
 #from sia_rhyme.siamese_rhyme import siamese_rhyme
@@ -38,7 +39,11 @@ def get_synonyms_cand(verse,tok_id,target_rythms, LLM_perplexity, adaptive=False
     top_k: number of candidates BERT creates 
     '''
     text = ''
-    unmasker = pipeline('fill-mask', model = bert_model, top_k = top_k,framework='pt',device = 0)
+    if torch.cuda.device_count() > 0:
+        device = 0
+    else: 
+        device = -1
+    unmasker = pipeline('fill-mask', model = bert_model, top_k = top_k,framework='pt',device = device)
     if tok_id > -1:
         for token in verse.doc:
             if token.i != tok_id:
