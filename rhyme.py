@@ -160,10 +160,10 @@ def find_rhyme(args,verse_lst,idx1,idx2,LLM_perplexity,last_stress = -2, LLM='',
 
     if not word_pairs:      
         print('found no pair')
-        print(word_1)
-        print(word_2)
-        print(causal_syns)
-        print(bi_syns)
+        if return_alternatives == False: 
+            return verse_lst
+        else:
+            return verse_lst, [], []
 
 
     for word_pair in word_pairs:            # compare with colone phonetics
@@ -330,10 +330,6 @@ def find_rhyme(args,verse_lst,idx1,idx2,LLM_perplexity,last_stress = -2, LLM='',
 
             found = True
         
-              
-
-    
-
     if found:              
         print('final choice:')
         print(' '.join(verse_lst[idx1].text[:last]) + ' ' + bi_selection)
@@ -361,10 +357,5 @@ def find_rhyme(args,verse_lst,idx1,idx2,LLM_perplexity,last_stress = -2, LLM='',
                 causal_selection = sent_pairs[candidate][1]
                 causal_syns.append(causal_selection)
                 bi_syns.append(' '.join(verse_lst[idx1].text[:last]) + ' ' + bi_selection)
-
-
-        '''bi_syns = [' '.join(syn) for syn in bi_syns]
-        
-        bi_syns = [bi_trunk + ' ' + syn for syn in bi_syns]'''
 
         return verse_lst, bi_syns, causal_syns

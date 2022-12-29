@@ -333,7 +333,7 @@ def parse_arguments():
     parser.add_argument("--top_p_dict_replace", type=dict,default={0:0.8,1:0.4},help="top p dictionary used for the words replaced by the second model")
 
     parser.add_argument("--LLM_rhyme", type=str,default=None,help="generative language model to use from the huggingface library or gpt3")
-    parser.add_argument("--LLM_rhyme_sampling", type=str,default=None,help="sampling method for the rhyme model - systematic or multinomial")
+    parser.add_argument("--LLM_rhyme_sampling", type=str,default='systematic',help="sampling method for the rhyme model - systematic or multinomial")
     parser.add_argument("--rhyme_temperature", type=int,default=1,help="sampling temperature for rhyming words sampling")
     
     parser.add_argument("--use_pos_rhyme_syns", type=bool,default=True,help="synonyms with the same pos tokens are allowed when looking for rhymes (only if sampling = systematic)")
@@ -366,8 +366,7 @@ def initialize_llms(args):
     default_llm = 'Anjoe/german-poetry-gpt2-large'
     if args.LLM == 'GPT2-large':                                                        # backwards compatibility
         LLM = LLM_class(default_llm,sampling='multinomial')
-    
-    LLM_sampling = args.LLM_rhyme_sampling
+
 
     if len(args.LLM) > 5:          # ohterwise it is string for an api, not a huggingface link
         LLM = LLM_class(args.LLM,device=LLM_device,sampling=args.LLM_sampling)
@@ -388,7 +387,6 @@ def initialize_llms(args):
     if LLM == 'GPT3':
         args.prompt = 'schreibe ein Gedicht auf Deutsch \n' + args.prompt
 
-
     if LLM_2 and not args.LLM_rhyme:
         if args.LLM_rhyme_sampling == 'multinomial' or args.LLM_2_sampling == 'multinomial':
             LLM_rhyme = LLM_class(LLM_2.model_name,sampling=args.LLM_rhyme_sampling, device='cpu')
@@ -396,10 +394,10 @@ def initialize_llms(args):
             LLM_rhyme = LLM
 
     elif not args.LLM_rhyme and args.LLM_rhyme_sampling != 'multinomial':
-        if (LLM_sampling != args.LLM_rhyme_sampling and args.LLM_rhyme_sampling) and torch.cuda.device_count() > 1:
+        if (LLM.sampling != args.LLM_rhyme_sampling and args.LLM_rhyme_sampling) and torch.cuda.device_count() > 1:
             LLM_rhyme = LLM_class(LLM.model_name,sampling=args.LLM_rhyme_sampling, device='cuda:1')
 
-        elif (LLM_sampling == args.LLM_rhyme_sampling and args.LLM_rhyme_sampling) and args.LLM_rhyme_sampling == 'systematic':
+        elif (LLM.sampling == args.LLM_rhyme_sampling and args.LLM_rhyme_sampling) and args.LLM_rhyme_sampling == 'systematic':
             LLM_rhyme = LLM
 
         elif torch.cuda.device_count() > 1:             
@@ -410,8 +408,8 @@ def initialize_llms(args):
     
     elif not args.LLM_rhyme and args.LLM_rhyme_sampling == 'multinomial':
         LLM_rhyme = LLM_class(LLM.model_name,sampling=args.LLM_rhyme_sampling,device='cpu')
-    else: 
 
+    else: 
         if args.LLM_rhyme_sampling == 'multinomial':
             LLM_rhyme = LLM_class(args.LLM_rhyme,sampling=args.LLM_rhyme_sampling,device='cpu')
 
@@ -426,8 +424,6 @@ def initialize_llms(args):
         else:
             LLM_rhyme = LLM_class(args.LLM_rhyme,sampling=args.LLM_rhyme_sampling,device = 'cpu')
 
-    if args.LLM_rhyme_sampling == 'multinomial':
-        LLM_rhyme.device = 'cpu'
 
     LLM_perplexity = None
 
@@ -468,43 +464,6 @@ def initialize_llms(args):
     print(LLM_perplexity.device)
 
     return LLM, LLM_perplexity, LLM_rhyme, LLM_2
-
-
-def start_poetry_generation(prompt,target_rythm, num_syll_lst, rhyme_scheme, loops = 1, LLM='Anjoe/german-poetry-gpt2-large', use_tts = False):
-    '''
-    function that can be called from an other program 
-    or a jupyter notebook
-    
-    '''
-
-    args = parse_arguments()   # just to get the defaults
-
-    args.prompt = prompt
-    args.target_rythm = target_rythm
-    args.num_syll_lst
-    args.LLM = LLM
-    args.use_tts = use
-
-    LLM, LLM_2, LLM_rhyme = initialize_llms(args)
-
-    if LLM == 'GPT3':
-        args.prompt = 'schreibe ein Gedicht auf Deutsch ' + prompt
-
-    if type(num_syll_lst) != list:
-        num_syll_lst = [num_syll_lst]
-    
-    files = glob.glob("output/*.txt")
-    max_idx = 0
-    for file in files: 
-        max_idx = max(int(re.findall(r'\d+', file)[0]),max_idx)
-
-    start_idx = max_idx + 1
-
-    for i in range(loops):
-        text, rating = generate_poetry(prompt,target_rythm, num_syll_lst, rhyme_scheme,LLM=LLM,LLM_rhyme=LLM_rhyme,use_tts=use_tts)
-    
-        with open('output/poem_' + str(start_idx + i)+'.txt', 'w') as f:
-            f.write(text)
 
 
 if __name__ == "__main__":  

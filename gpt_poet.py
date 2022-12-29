@@ -453,6 +453,7 @@ def gpt_sample_synonyms(verse,target_rythm,num_remove=2, max_length = 10, LLM=No
         next_text = re.sub('[^A-Za-zäöüÄÖÜß]', '', line)
         
         input_text = ' '.join(re.sub('[^A-Za-zäöüÄÖÜß ]', ' ', input_text).split()).strip()
+
         if len(line) > 1 and next_text != input_text_last and next_text not in created_lines: # and len(line) < (len(' '.join(verse.text[-num_remove:])) + 5)
             created_lines.append(next_text)
             line_clean = ' '.join(re.sub('[^A-Za-zäöüÄÖÜß ]', ' ', line).split()).strip()
@@ -486,10 +487,10 @@ def gpt_sample_synonyms(verse,target_rythm,num_remove=2, max_length = 10, LLM=No
 
                     if np.sum(comp) == 0:
 
-                        lines.append(input_text  + ' ' + line)
+                        lines.append(input_text  + ' ' + ' '.join(verse_tmp.text))
 
             elif len(target_rythm) == 0 and condition: 
-                lines.append(input_text  + ' ' + line)
+                lines.append(input_text  + ' ' + ' '.join(verse_tmp.text))
 
     
     return lines
