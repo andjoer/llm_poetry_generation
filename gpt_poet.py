@@ -143,7 +143,7 @@ def gpt_poet(args,input_text, num_syll,title_accepted, LLM = None,LLM_2=None):
             if current_num_syll > 0:
                 random_first = False
 
-            generated = gpt_sample_systematic(input_text_new,LLM,num_return_sequences = 1,top_p = top_p_current,top_k = 20, temperature = temperature,random_first = random_first, random_all = random_all,stop_tokens = stop_tokens,block_non_alpha = False,
+            generated = gpt_sample_systematic(input_text_new,LLM,num_return_sequences = 1,top_p = top_p_current,top_k = 20, temperature = temperature,random_first = random_first, random_all = random_all,stop_tokens_alpha = stop_tokens,block_non_alpha = False,
                                                 num_syll=pending_syllables,target_rythm=target_rythm_shifted, last_stress=last_stress,num_syll_tollerance=num_syll_tollerance,trunkate_after = trunkate_after,dividable_rest=dividable_rest,only_alpha_after = only_alpha_after)
 
             if generated:
@@ -384,7 +384,7 @@ def gpt_synonyms(verse,target_rythm,num_remove=2, max_length = 10, LLM=None, eol
         verse_text, _ = get_input_text(verse,num_remove)
         if not eol:
             stop_tokens = None
-        outputs = gpt_sample_systematic(verse,LLM,num_return_sequences=num_return_sequences, num_words_remove = num_remove,pos=use_pos,check_rythm = True, target_rythm = target_rythm,top_p_dict=top_p_dict,stop_tokens=stop_tokens,
+        outputs = gpt_sample_systematic(verse,LLM,num_return_sequences=num_return_sequences, num_words_remove = num_remove,pos=use_pos,check_rythm = True, target_rythm = target_rythm,top_p_dict=top_p_dict,stop_tokens_alpha=stop_tokens,
                                             temperature=temperature,top_p=top_p,top_k = top_k,allow_pos_match=allow_pos_match)
         lines = [verse_text + output for output in outputs]
         if not lines: 
@@ -401,7 +401,7 @@ def gpt_sample_synonyms(verse,target_rythm,num_remove=2, max_length = 10, LLM=No
     create alternative Verse endings
     '''
 
-    if use_pos:
+    if use_pos or allow_pos_match:
         verse_clean = verse_cl(re.sub('[^a-zA-ZäöüÄÖÜß ]', '',' '.join(verse.text)))
         pos = verse_clean.token_pos
 
@@ -452,7 +452,7 @@ def gpt_sample_synonyms(verse,target_rythm,num_remove=2, max_length = 10, LLM=No
 
         next_text = re.sub('[^A-Za-zäöüÄÖÜß]', '', line)
         
-
+        input_text = ' '.join(re.sub('[^A-Za-zäöüÄÖÜß ]', ' ', input_text).split()).strip()
         if len(line) > 1 and next_text != input_text_last and next_text not in created_lines: # and len(line) < (len(' '.join(verse.text[-num_remove:])) + 5)
             created_lines.append(next_text)
             line_clean = ' '.join(re.sub('[^A-Za-zäöüÄÖÜß ]', ' ', line).split()).strip()
@@ -469,13 +469,13 @@ def gpt_sample_synonyms(verse,target_rythm,num_remove=2, max_length = 10, LLM=No
             
 
             if len(verse_tmp.rythm) > len(target_rythm_ext) and allow_pos_match and not len(target_rythm) == 0 and not use_pos and eol:
-                verse_tmp.shorten(len(verse_clean)-num_remove)
-                print('verse ending too long')
+             
+                verse_tmp.shorten(len(verse_clean.rythm_tokens))
+     
                 condition = False
                 if len(verse_tmp.rythm) == len(target_rythm_ext):
-                    print('matching number of syllables')
-                    if verse_tmp.token_pos[-num_remove:] != pos[-num_remove:]:
-                        print('matching pos tags')
+
+                    if verse_tmp.token_pos[-num_remove:] == pos[-num_remove:]:
                         condition = True
 
             rythm =  np.asarray(verse_tmp.rythm)
@@ -485,7 +485,7 @@ def gpt_sample_synonyms(verse,target_rythm,num_remove=2, max_length = 10, LLM=No
                     comp = np.abs((target_rythm_ext-rythm) * (rythm != 0.5))      # check if the rythm is correct
 
                     if np.sum(comp) == 0:
-                        #print('passed rythm')
+
                         lines.append(input_text  + ' ' + line)
 
             elif len(target_rythm) == 0 and condition: 

@@ -173,7 +173,6 @@ def generate_poetry(args,
                     shots = 1, 
                     LLM=None, 
                     LLM_rhyme=None, 
-                    use_tts = True,
                     LLM_2  = None,
                     LLM_perplexity = None):
     '''
@@ -190,6 +189,7 @@ def generate_poetry(args,
     use_tts: Use the mffc-feature method in order to check the results from the sia-rhyme method
     num_lines: number of verses to generate
     '''
+
 
     prompt = args.prompt
     target_rythm = args.target_rythm
@@ -222,10 +222,7 @@ def generate_poetry(args,
     rating = 'pending'
     for i in range(num_lines):
 
-        if LLM == 'GPT2-large_top_p':
-            shots = 1
-        if LLM == 'GPT3':
-            shots = 1
+        shots = args.verse_versions
 
         tmp_lst = []
         perp_lst = []
@@ -251,10 +248,22 @@ def generate_poetry(args,
 
             else:        
                 verse_tmp = verse_cl(line)
-                verse_tmp.context = input_text[-250:]
+                verse_tmp.context = input_text[-400:]
                 verse_tmp = fix_rythm(verse_tmp,target_rythm,num_syll,LLM_perplexity)          # fix the rythm of the generated verse
-                perp_lst.append(perplexity(input_text[-200:] + ' '.join(verse_tmp.text),LLM_perplexity)) # measure the perplexity of the verse
 
+                perplexity_check_text = '\n'.join(input_text.split('\n')[-2:]) + ' '.join((re.sub('[^a-zA-ZäöüÄÖÜß ]','',' '.join(verse_tmp.text)).split()))
+                
+                if args.check_end == True: 
+                    perplexity_check_text += '.'
+                
+                print('perp text')
+                print(perplexity_check_text)
+                perp = perplexity(perplexity_check_text,LLM_perplexity)
+                perp_lst.append(perp) # measure the perplexity of the verse
+
+                print('generated verse: ')
+                print(' '.join(verse_tmp.text))
+                print('perplexity: ' + str(perp))
                 tmp_lst.append(verse_tmp)
 
         if not is_title:
@@ -270,7 +279,8 @@ def generate_poetry(args,
             
             if rhyme_scheme and rhyme_scheme[cnt%freq] != -1:  # if rhyme partner already exists
      
-                verse_lst = find_rhyme(args,verse_lst,offset + int(int(cnt/freq)*freq+rhyme_scheme[cnt%freq]),cnt,LLM_perplexity,LLM=LLM_rhyme,LLM2=LLM_2) # generate the rhyming verse endings
+          
+                verse_lst = find_rhyme(args,verse_lst,offset + int(int(cnt/freq)*freq+rhyme_scheme[cnt%freq]),cnt,LLM_perplexity,LLM=LLM_rhyme,LLM2=LLM_2)
                 input_text = input_text_0
                 print_text = ''
                 for verse in verse_lst:
@@ -301,8 +311,10 @@ def generate_poetry(args,
 def parse_arguments():
     parser = argparse.ArgumentParser()
     parser.add_argument("--prompt", type=str,default=None,help="initial input prompt")
-    parser.add_argument("--title", type=str,default='Die Regierung',help="title of the poem")
+    parser.add_argument("--title", type=str,default='Die Regierung',help="title of the poem") 
     parser.add_argument("--generated_lines", type=int,default=8,help="number of lines that will be generated")
+    parser.add_argument("--verse_versions", type=int,default=1,help="number of versions for one verse will be generated; the one with lowest perplexity will be chosen")
+    parser.add_argument("--check_end", type=bool,default=True,help="append '.' after verse to check perplexity") # experimental, might help to avoid invalid end of verses
 
     parser.add_argument("--LLM", type=str,default='Anjoe/german-poetry-gpt2-large',help="generative language model to use from the huggingface library or GPT3")
     parser.add_argument("--LLM_sampling", type=str,default='systematic',help="sampling method for gpt2 models - systematic or multinomial")
@@ -354,19 +366,15 @@ def initialize_llms(args):
         LLM_device = 'cpu'
 
     default_llm = 'Anjoe/german-poetry-gpt2-large'
-    if args.LLM == 'GPT2-large':                                                        # downwards compatibility
+    if args.LLM == 'GPT2-large':                                                        # backwards compatibility
         LLM = LLM_class(default_llm,sampling='multinomial')
     
-    LLM_sampling = args.LLM_sampling
+    LLM_sampling = args.LLM_rhyme_sampling
 
-    if len(args.LLM) > 5:          # it is string for an api, not a huggingface link
+    if len(args.LLM) > 5:          # ohterwise it is string for an api, not a huggingface link
         LLM = LLM_class(args.LLM,device=LLM_device,sampling=args.LLM_sampling)
         
-    else: 
-        LLM = args.LLM
-        if not args.LLM_2 and not args.LLM_rhyme:
-            args.LLM_rhyme_sampling = args.LLM_sampling
-
+  
     if args.LLM_2:
         if torch.cuda.device_count() > 1 and type(LLM) != str:
             LLM_2_device =  'cuda:1'
@@ -382,22 +390,26 @@ def initialize_llms(args):
     if LLM == 'GPT3':
         args.prompt = 'schreibe ein Gedicht auf Deutsch \n' + args.prompt
 
+
     if LLM_2 and not args.LLM_rhyme:
-        if (LLM_2.sampling != args.LLM_rhyme_sampling) and args.LLM_rhyme_sampling:
-            LLM_rhyme = LLM_class(LLM_2.model_name,args.LLM_rhyme_sampling, device='cpu')
+        if args.LLM_rhyme_sampling == 'multinomial' or args.LLM_2_sampling == 'multinomial':
+            LLM_rhyme = LLM_class(LLM_2.model_name,sampling=args.LLM_rhyme_sampling, device='cpu')
         else:
             LLM_rhyme = LLM
 
     elif not args.LLM_rhyme:
         if (LLM_sampling != args.LLM_rhyme_sampling and args.LLM_rhyme_sampling) and torch.cuda.device_count() > 1:
-            LLM_rhyme = LLM_class(LLM.model_name,args.LLM_rhyme_sampling, device='cuda:1')
+            LLM_rhyme = LLM_class(LLM.model_name,sampling=args.LLM_rhyme_sampling, device='cuda:1')
 
-        elif (LLM_sampling != args.LLM_rhyme_sampling and args.LLM_rhyme_sampling) and torch.cuda.device_count() < 2:              
-            LLM_rhyme = LLM_class(LLM.model_name,device='cpu')
-        else: 
+        elif (LLM_sampling == args.LLM_rhyme_sampling and args.LLM_rhyme_sampling) and args.LLM_rhyme_sampling == 'systematic':
             LLM_rhyme = LLM
+
+        elif torch.cuda.device_count() > 1:             
+            LLM_rhyme = LLM_class(LLM.model_name,sampling=args.LLM_rhyme_sampling,device='cuda:1')
+        else: 
+            LLM_rhyme = LLM_class(LLM.model_name,sampling=args.LLM_rhyme_sampling,device='cpu')
+
     else: 
-        
         if not LLM_2 and type(LLM) == str and torch.cuda.device_count() > 0:                        # LLM via API
             LLM_rhyme = LLM_class(args.LLM_rhyme,sampling=args.LLM_rhyme_sampling,device = 'cuda:0')
 
@@ -564,7 +576,7 @@ if __name__ == "__main__":
             print('LLM_2: ' + LLM_2.model_name)
         print(args.prompt)
         
-        text, rating = generate_poetry(args,LLM=LLM,LLM_rhyme=LLM_rhyme,use_tts = True,LLM_2=LLM_2,LLM_perplexity=LLM_perplexity)
+        text, rating = generate_poetry(args,LLM=LLM,LLM_rhyme=LLM_rhyme,LLM_2=LLM_2,LLM_perplexity=LLM_perplexity)
 
         print('*** final output ***')
         print('\n')

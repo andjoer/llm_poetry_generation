@@ -7,6 +7,7 @@ import re
 import os
 import random
 from rythm import check_rythm
+from numba import cuda
 
 from rythm_utils import extend_target_rythm, verse_cl
 
@@ -24,10 +25,13 @@ class LLM_class:
         if "cuda" in device and sampling != 'systematic':
             if device[-1].isnumeric():
                 device_pipeline = int(device[-1])
+
             else: 
                 device_pipeline = 0
+
         else: 
-            device_pipeline = 'cpu'
+            device_pipeline = -1
+
         if not tokenizer_name: 
             self.tokenizer_name = model_name
         else: 
@@ -58,8 +62,9 @@ class LLM_class:
 
 
 def gpt2(input_text,LLM, max_length= 10, num_return_sequences=5,stop=['\n']):
-    
+
     max_length += LLM.tokenizer.encode(input_text,return_tensors='pt').size(1)
+    
     generated = LLM.model(input_text, max_length=max_length,return_full_text = False, num_return_sequences=num_return_sequences,repetition_penalty=1.2)
     
     return [item['generated_text'] for item in generated]
@@ -168,7 +173,7 @@ def get_num_ngram(sentence, N):
     return n_grams.count(n_grams[-1])
 
 
-def gpt_sample_systematic(verse,LLM,num_return_sequences = 100,loop_limit = 10000, num_words_remove = None, top_p = None,top_k = 20, temperature = 0.9,random_first = False, random_all = False,stop_tokens = [],block_non_alpha = True,
+def gpt_sample_systematic(verse,LLM,num_return_sequences = 100,loop_limit = 10000, num_words_remove = None, top_p = None,top_k = 20, temperature = 0.9,random_first = False, random_all = False,stop_tokens_alpha = [],block_non_alpha = True,
                         top_p_dict = {},pos=False,check_rythm = True, target_rythm = [],num_syll = None,num_syll_tollerance = 1,last_stress = None, trunkate_after = 100,pos_alternative = False,factor_stop_token=0.2,bigram_limit=2, trigram_limit = 1,
                         dividable_rest=False, only_alpha_after = 3,allow_pos_match=False):
 
@@ -215,11 +220,11 @@ def gpt_sample_systematic(verse,LLM,num_return_sequences = 100,loop_limit = 1000
     tokenizer = LLM.tokenizer#GPT2Tokenizer.from_pretrained(LLM[0])
     model = LLM.model#GPT2LMHeadModel.from_pretrained(LLM[1]).to('cuda')
     stop_tokens = []
-    if stop_tokens:
-        if '\n' in stop_tokens:          # fix for google colab; no explanation for the bug currently
-            stop_tokens.remove['\n']
+    if stop_tokens_alpha:
+        if '\n' in stop_tokens_alpha:          # fix for google colab; no explanation for the bug currently
+            stop_tokens_alpha.remove('\n')
             stop_tokens = [199]    
-        stop_tokens += [tokenizer.encode(stop_token)[0] for stop_token in stop_tokens]
+        stop_tokens += [tokenizer.encode(stop_token)[0] for stop_token in stop_tokens_alpha]
  
         
 
