@@ -14,8 +14,9 @@ def get_last(word_lst_inp):
     word_lst = word_lst_inp.copy()
     word_lst.reverse()
     for word in word_lst:
-            if len(clean_word(word)) > 1:
-                return word
+            clean_word_out = clean_word(word)
+            if len(clean_word_out) > 1:
+                return clean_word_out
 
     return None
 
@@ -28,13 +29,50 @@ def get_last_idx(word_lst_inp):
 
     return None
 
-def find_rhyme(verse_lst,idx1,idx2,target_rythm,last_stress = -2, detection_method ='neural',LLM='GPT2',use_tts = False, use_colone = False, return_alternatives=False):
-
+def find_rhyme(args,verse_lst,idx1,idx2,LLM_perplexity,last_stress = -2, LLM='', LLM2 = None, return_alternatives=False):
+    
     '''
     finds rhyming endings for two verses 
     '''
+
+    max_rhyme_dist = args.max_rhyme_dist
+    use_colone = args.use_colone_phonetics
+    use_tts = args.use_tts
+    LLM2 = args.LLM_2
+    target_rythm = args.target_rythm
+    top_p_dict_rhyme = args.top_p_dict_rhyme
+    top_p_rhyme = args.top_p_rhyme
+    stop_tokens = args.rhyme_stop_tokens
+    rhyme_temperature = args.rhyme_temperature
+    allow_pos_match = args.allow_pos_match
+
+    min_dist = 0.04
+    
+
+    eol = True
+    use_pos = False
+
+    if LLM2: 
+        try:
+            stop_tokens.remove('\n')
+        except:
+            pass
+
+    if type (LLM) != str:
+        LLM_name = LLM.model_name
+    else:
+        LLM_name = LLM
+
+    if type(LLM) != str:
+        if LLM.sampling == 'systematic':
+            sampling = 'systematic'
+        else: 
+            sampling = 'multinomial'
+    else: 
+        sampling = 'multinomial'
     print('--- looking for rhymes ---')
-    print('using ' + str(LLM))
+    print('using ' + str(LLM_name))
+    print('sampling ' + str(sampling))
     print(' '.join(verse_lst[idx1].text))
     print(' '.join(verse_lst[idx2].text))
     print('--------------------------')
@@ -43,7 +81,7 @@ def find_rhyme(verse_lst,idx1,idx2,target_rythm,last_stress = -2, detection_meth
     for i in range(idx1+1,idx2+1):
         context_aft += ' '.join(verse_lst[i].text) + '\n'
 
-    bi_syns = bidirectional_synonyms(verse_lst[idx1],context_aft, target_rythm) # alternatives for the first verse
+    bi_syns = bidirectional_synonyms(verse_lst[idx1],context_aft, target_rythm,LLM_perplexity) # alternatives for the first verse
 
     if verse_lst[idx1].text[-1].isalpha():
         last = -1
@@ -54,11 +92,20 @@ def find_rhyme(verse_lst,idx1,idx2,target_rythm,last_stress = -2, detection_meth
 
     if idx2 == len(verse_lst) - 1:
         causal = True
-        causal_syns = gpt_synonyms(verse_lst[idx2],target_rythm,num_remove = 1,LLM=LLM)
-        causal_syns += gpt_synonyms(verse_lst[idx2],target_rythm,LLM=LLM)[1:]        
+        causal_syns = gpt_synonyms(verse_lst[idx2],target_rythm,num_remove = 1,num_return_sequences = 200,LLM=LLM,eol=eol,use_pos = use_pos,top_p_dict =top_p_dict_rhyme ,temperature=1,top_k=50,stop_tokens=stop_tokens,allow_pos_match=allow_pos_match)
+        
+        causal_syns += gpt_synonyms(verse_lst[idx2],target_rythm,num_remove=2,num_return_sequences = 150,LLM=LLM,eol=eol,use_pos = use_pos,stop_tokens=stop_tokens,top_p = top_p_rhyme,allow_pos_match=allow_pos_match)[1:]        
 
-        if len(causal_syns) < 20:
-            causal_syns = gpt_synonyms(verse_lst[idx2],target_rythm,num_remove = 3,LLM=LLM)       # alternatives for the second verse
+        if len(causal_syns) < 10 and not LLM2: 
+            causal_syns = gpt_synonyms(verse_lst[idx2],target_rythm,num_remove = 3,num_return_sequences = 140,LLM=LLM,eol=eol,use_pos = use_pos,stop_tokens=stop_tokens,top_p = top_p_rhyme,allow_pos_match=allow_pos_match)[1:]       # alternatives for the second verse
+
+        if sampling == 'systematic':           # try as well with matching pos labels instead of correct prediction of new line
+            eol = False
+            use_pos = True
+            causal_syns += gpt_synonyms(verse_lst[idx2],target_rythm,num_remove = 1,num_return_sequences = 200,LLM=LLM,eol=eol,use_pos = use_pos,top_p_dict =top_p_dict_rhyme ,temperature=1,top_k=50)
+        
+            causal_syns += gpt_synonyms(verse_lst[idx2],target_rythm,num_remove=2,num_return_sequences = 150,LLM=LLM,eol=eol,use_pos = use_pos,top_p = top_p_rhyme )[1:]        
+
 
     else:
         causal = False
@@ -66,7 +113,7 @@ def find_rhyme(verse_lst,idx1,idx2,target_rythm,last_stress = -2, detection_meth
         for i in range(idx2,len(verse_lst)):
             context_aft += ' '.join(verse_lst[i].text) + '\n'
 
-        syns_tmp = bidirectional_synonyms(verse_lst[idx1],context_aft, target_rythm)
+        syns_tmp = bidirectional_synonyms(verse_lst[idx1],context_aft, target_rythm,LLM_perplexity)
 
         causal_syns = []
 
@@ -225,10 +272,10 @@ def find_rhyme(verse_lst,idx1,idx2,target_rythm,last_stress = -2, detection_meth
 
         distances = np.asarray(distances) # distances between each possible combination
 
-        candidate_idx = np.argsort(distances)[:200]
+        candidate_idx = np.argsort(distances)[:20]
 
-        if use_tts: 
-            print(tts)
+        if use_tts and np.amin(distances) <= max_rhyme_dist: 
+            print('using tts')
             spectral_diffs = []
 
             for idx in candidate_idx:
@@ -236,7 +283,7 @@ def find_rhyme(verse_lst,idx1,idx2,target_rythm,last_stress = -2, detection_meth
                 word_1 = word_pairs[idx][0]
                 word_2 = word_pairs[idx][1]
 
-                if word_1 != word_2:
+                if word_1.lower() != word_2.lower():
                 
                     try:
                         spec_1 = wordspectrum(word_1)                            # calculate the mfcc features for each word
@@ -260,42 +307,64 @@ def find_rhyme(verse_lst,idx1,idx2,target_rythm,last_stress = -2, detection_meth
 
                 spectral_diffs.append(mean)                 # calculate the distances between the mfcc vectors for each word
 
-            best_idx = candidate_idx[np.argmin(np.asarray(spectral_diffs))]  # choose the pair with the lowest distance
+            print('spectral distance: ' + str(min(spectral_diffs)))
+            best_idx = candidate_idx[np.argmin(np.asarray(spectral_diffs))]    # choose the pair with the lowest distance
 
         else:
             candidates = np.argsort(distances)
-
+            best_idx = ''
             for candidate in candidates: 
-                if distances[candidate] > 0:
+                if distances[candidate] > min_dist:
                     best_idx = candidate                       # if no mffc features are used, use the minimum distance in the vectorspace of sia rhyme
                     break
             
+        if best_idx and np.amin(distances) <= max_rhyme_dist:
                 
-        print('found via sia rhyme')
-        print(sent_pairs[best_idx][0])
-        print(sent_pairs[best_idx][1])
-        print('distance: ' + str(distances[best_idx]))
+            print('found via sia rhyme')
+            print(sent_pairs[best_idx][0])
+            print(sent_pairs[best_idx][1])
+            print('distance: ' + str(distances[best_idx]))
         
-        if not found: 
             bi_selection = sent_pairs[best_idx][0]
             causal_selection = sent_pairs[best_idx][1]
+
+            found = True
         
               
 
-    print('final choice:')
-    print(' '.join(verse_lst[idx1].text[:last]) + ' ' + bi_selection)
-    print(causal_selection)
     
-    verse_lst[idx1] = verse_cl(' '.join(verse_lst[idx1].text[:last]) + ' ' + bi_selection)
-    verse_lst[idx2] = verse_cl(causal_selection)
-    
+
+    if found:              
+        print('final choice:')
+        print(' '.join(verse_lst[idx1].text[:last]) + ' ' + bi_selection)
+        print(causal_selection)                                                                    #otherwise don't change the verses 
+        verse_lst[idx1] = verse_cl(' '.join(verse_lst[idx1].text[:last]) + ' ' + bi_selection)
+        verse_lst[idx2] = verse_cl(causal_selection)
+    else: 
+        print('no rhyme found')
     if return_alternatives == False: 
         return verse_lst
 
     else:
 
-        bi_syns = [' '.join(syn) for syn in bi_syns]
+        causal_syns = []
+        bi_syns = []
+        idx = 0
+        candidates = np.argsort(distances)
+        items = 0
+        while items < 50:
+            candidate = candidates[idx]
+            idx += 1
+            if distances[candidate] > min_dist:
+                items += 1
+                bi_selection = sent_pairs[candidate][0]
+                causal_selection = sent_pairs[candidate][1]
+                causal_syns.append(causal_selection)
+                bi_syns.append(' '.join(verse_lst[idx1].text[:last]) + ' ' + bi_selection)
+
+
+        '''bi_syns = [' '.join(syn) for syn in bi_syns]
         
-        bi_syns = [bi_trunk + ' ' + syn for syn in bi_syns]
+        bi_syns = [bi_trunk + ' ' + syn for syn in bi_syns]'''
 
         return verse_lst, bi_syns, causal_syns

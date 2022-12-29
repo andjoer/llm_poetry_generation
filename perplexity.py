@@ -1,17 +1,19 @@
 from transformers import GPT2LMHeadModel, GPT2TokenizerFast
-from parameters import gtp2_model
+from parameters import gpt2_model
+import torch
 
-device = "cuda"
+#device = "cuda:1"
 #model_id = "Anjoe/german-poetry-gpt2"
-model = GPT2LMHeadModel.from_pretrained(gtp2_model).to(device)
-tokenizer = GPT2TokenizerFast.from_pretrained(gtp2_model)
+#model = GPT2LMHeadModel.from_pretrained(gpt2_model).to(device)
+#tokenizer = GPT2TokenizerFast.from_pretrained(gpt2_model)
 
 
-def perplexity(text):
+def perplexity(text,LLM):
+    model = LLM.model
+    device = LLM.device
+    tokenizer = LLM.tokenizer
     encodings = tokenizer(text, return_tensors="pt")
-    import torch
-    from tqdm import tqdm
-
+    
     max_length = model.config.n_positions
     stride = 512
 

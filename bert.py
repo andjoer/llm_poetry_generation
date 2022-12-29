@@ -19,13 +19,13 @@ nlp = spacy.load("de_core_news_lg")
 no_verse_end = ['CCONJ','SCONJ','CONJ','DET','ADP']
 ###############################################
 
-
+from annotate_meter.ipa_hyphenate import hyphenate_ipa
 
 
 def clean_word(word):
     return re.sub('[^a-zäöüß]', '', word.lower())
 
-def get_synonyms_cand(verse,tok_id,target_rythms,adaptive=False,after = False,verse_end = False,max_cand = 50, top_k = 150):
+def get_synonyms_cand(verse,tok_id,target_rythms, LLM_perplexity, adaptive=False,after = False,verse_end = False,max_cand = 50, top_k = 150):
     '''
     get synonym candidates
     takes
@@ -38,7 +38,7 @@ def get_synonyms_cand(verse,tok_id,target_rythms,adaptive=False,after = False,ve
     top_k: number of candidates BERT creates 
     '''
     text = ''
-    unmasker = pipeline('fill-mask', model = bert_model, top_k = top_k,framework='pt')
+    unmasker = pipeline('fill-mask', model = bert_model, top_k = top_k,framework='pt',device = 0)
     if tok_id > -1:
         for token in verse.doc:
             if token.i != tok_id:
@@ -73,7 +73,7 @@ def get_synonyms_cand(verse,tok_id,target_rythms,adaptive=False,after = False,ve
         for prediction in predictions:
 
             word = prediction['token_str']
-            word = re.sub(r'[^a-zäöü]','',word.lower())
+            word = re.sub(r'[^a-zäöüß]','',word.lower())
             
             chunks= text.split()
             
@@ -86,7 +86,8 @@ def get_synonyms_cand(verse,tok_id,target_rythms,adaptive=False,after = False,ve
             
                 doc = nlp(text_pred)
                 tok_id = [token.i for token in doc if token.text == word and abs(token.i - mask_idx) < 3][0]
-                rythm = get_rythm(word)
+                # rythm = get_rythm(word)
+                rythm,_,_ = hyphenate_ipa(word)
                 proceed = True
                 if verse_end:
                     if doc[tok_id].pos_ in no_verse_end:
@@ -109,11 +110,11 @@ def get_synonyms_cand(verse,tok_id,target_rythms,adaptive=False,after = False,ve
                         if rythm_comp_adaptive(rythm,target_rythms,adaptive):  # the rythm of the synonym has to be correct
                           
                             candidates.append(word)
-                            perp = perplexity(' '.join(text_pred.split()))
+                            perp = perplexity(' '.join(text_pred.split()), LLM_perplexity)
                             candidates_perp.append(perp)
                     else: 
                         candidates.append(word)
-                        candidates_perp.append(perplexity(text_pred))
+                        candidates_perp.append(perplexity(text_pred), LLM_perplexity)
                         
         if len(candidates) > 8:
             if i == 0:
@@ -125,14 +126,14 @@ def get_synonyms_cand(verse,tok_id,target_rythms,adaptive=False,after = False,ve
     #print(candidates)
     return candidates, candidates_perp, found_correct
                
-def get_synonym(verse,tok_id,target_rythms,adaptive = False,verbose = False,after=False,verse_end = False):
+def get_synonym(verse,tok_id,target_rythms,LLM_perplexity, adaptive = False,verbose = False,after=False,verse_end = False):
     '''
     return a synonym for a given inmput
     '''
 
-    perp_0 = perplexity(' '.join(str(verse.doc).split()))
+    perp_0 = perplexity(' '.join(str(verse.doc).split()),LLM_perplexity)
 
-    candidates, candidates_perp, found_correct = get_synonyms_cand(verse,tok_id,target_rythms,adaptive=adaptive,after=after,verse_end = verse_end)
+    candidates, candidates_perp, found_correct = get_synonyms_cand(verse,tok_id,target_rythms,LLM_perplexity, adaptive=adaptive,after=after,verse_end = verse_end)
   
     if candidates:
         candidates_perp = np.asarray(candidates_perp)
@@ -152,7 +153,7 @@ def get_synonym(verse,tok_id,target_rythms,adaptive = False,verbose = False,afte
 
 
 
-def bidirectional_synonyms_single(verse,last_idx,context_aft, target, num_out = 100):
+def bidirectional_synonyms_single(verse,last_idx,context_aft, target, LLM_perplexity, num_out = 100):
 
     unmasker_rhyme = pipeline('fill-mask', model = bert_model, top_k = num_out,framework='pt')
 
@@ -177,7 +178,8 @@ def bidirectional_synonyms_single(verse,last_idx,context_aft, target, num_out = 
         word = prediction['token_str']
         word = re.sub(r'[^a-zäöü]','',word.lower())
         if len(target) > 0: 
-            rythm = get_rythm(word)
+            #rythm = get_rythm(word)
+            rythm,_,_ = hyphenate_ipa(word)
         doc = nlp(word)
         found_correct = []
         if len(word) > 1 and word != 'unk' and word not in input_text and not doc[0].pos_ in no_verse_end:
@@ -185,11 +187,11 @@ def bidirectional_synonyms_single(verse,last_idx,context_aft, target, num_out = 
                 if len(rythm) == len(target): 
                     if np.sum(np.abs(rythm-target)*(rythm != 0.5)) == 0:
                         candidates.append(word)
-                        candidates_perp.append(perplexity(gpt2_text_1 + ' ' + word + ' ' + gpt2_text_2))
+                        candidates_perp.append(perplexity(gpt2_text_1 + ' ' + word + ' ' + gpt2_text_2, LLM_perplexity))
                         found_correct.append(doc[0].pos_ == target_pos)
             else:
                 candidates.append(word)
-                candidates_perp.append(perplexity(gpt2_text_1 + ' ' + word + ' ' + gpt2_text_2))
+                candidates_perp.append(perplexity(gpt2_text_1 + ' ' + word + ' ' + gpt2_text_2, LLM_perplexity))
                 found_correct.append(doc[0].pos_ == target_pos)
                
 
@@ -218,7 +220,7 @@ def bidirectional_synonyms_single(verse,last_idx,context_aft, target, num_out = 
     
 
 
-def bidirectional_synonyms(verse,context_aft, target_rythm, num_out = 50):
+def bidirectional_synonyms(verse,context_aft, target_rythm, LLM_perplexity, num_out = 50):
     '''
     create alternative endings for a verse
     '''
@@ -237,7 +239,7 @@ def bidirectional_synonyms(verse,context_aft, target_rythm, num_out = 50):
         ################################################################################
         # one alternative for last word
         ################################################################################
-        candidates, candidates_perp = bidirectional_synonyms_single(verse, last_idx, context_aft, target, num_out = 150)
+        candidates, candidates_perp = bidirectional_synonyms_single(verse, last_idx, context_aft, target, LLM_perplexity, num_out = 150)
 
         candidate_idx = np.argsort(candidates_perp)[:-int(len(candidates_perp)*0.6)]
 
@@ -255,7 +257,7 @@ def bidirectional_synonyms(verse,context_aft, target_rythm, num_out = 50):
         for i in range(1,len(target)-min_last_syll+1):
             target_rythms.append(target[:i])
 
-        candidates_first, candidates_perp, _ = get_synonyms_cand(verse,len(verse.text)+last_idx-1,target_rythms,after = True,max_cand = 50)
+        candidates_first, candidates_perp, _ = get_synonyms_cand(verse,len(verse.text)+last_idx-1,target_rythms,LLM_perplexity,after = True,max_cand = 50)
         
 
         candidate_idx = np.argsort(candidates_perp)
@@ -270,7 +272,7 @@ def bidirectional_synonyms(verse,context_aft, target_rythm, num_out = 50):
 
             txt_tmp = ' '.join(verse.text[:-last_idx-1]) + ' ' + candidate + ' ' + verse.text[last_idx]
             verse_tmp = verse_cl(txt_tmp)
-            candidates_second, candidates_perp = bidirectional_synonyms_single(verse, -1, context_aft, target_tmp, num_out = 20)
+            candidates_second, candidates_perp = bidirectional_synonyms_single(verse, -1, context_aft, target_tmp, LLM_perplexity, num_out = 20)
             candidates_tuple += [[candidate,candidate_second] for candidate_second in candidates_second if candidate_second.isalpha()]
             perplexities_second += list(candidates_perp)
 

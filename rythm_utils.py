@@ -5,7 +5,7 @@ import pandas as pd
 import re
 import pyphen
 import os
-from ortho_to_ipa.ortho_to_ipa import ortho_to_ipa
+from annotate_meter.ortho_to_ipa import ortho_to_ipa
 import math
 
 import spacy
@@ -16,15 +16,23 @@ from spacy_utils import remove_tokens_idx, get_childs_idx, is_conj_adv
 
 from spacy.lang.de.examples import sentences 
 
+
+from annotate_meter.ipa_hyphenate import hyphenate_ipa
+
+
 regex_no_clean_ipa = r'[^aɐɑɒæɑʌbɓʙβcçɕɔɔdɗɖðdzdʒdʑɖʐeəɘɛɛɜfɸɡɠɢʛɣɤhħɦɧʜɥiĩɨɪɯɤijʝɟʄkkxlɫɬɭʟɮʎmɱɯɰnɲŋɳɴoõɵøɞœɶɔɔɤʊʘppfɸrɾɺɽɹɻʀʁrɐrɾɺɽɹɻʀʁrɐsʂʃsfɕtʈθtstʃtɕʈʂuũʉʊvvʋѵʌɣwwʍɰxχyʏɥʎɣɤzʑʐʒzvʡʔʢˈˌ,]'  # all but the accepted signs
 vocal_sep = re.compile(r'(?<![ˈˌ^])[ɪiiʏyyʊuuieɛæɑɔouaəœ]')     #ɐ̯ is for reduced syllables; shwa seamingly counts
 sec_stress_sep = re.compile(r'[ˌ]')
 
-otoi_df = pd.read_csv('ortho_to_ipa/data/de_ortho_ipa.csv')
-otoi_df['word'] = otoi_df['word'].str.lower()
 
 dirname = os.path.dirname(__file__)
-m_path = os.path.join(dirname, 'ortho_to_ipa/model')
+
+otoi_path = os.path.join(dirname, 'annotate_meter/data/de_ortho_ipa.csv')
+otoi_df = pd.read_csv(otoi_path)
+otoi_df['word'] = otoi_df['word'].str.lower()
+
+
+#m_path = os.path.join(dirname, 'ortho_to_ipa/model')
 
 wiki_path = os.path.join(dirname, 'data_tools/wiktionary/wiktionary_data.csv')
 wiktionary_df = pd.read_csv(wiki_path)
@@ -32,9 +40,9 @@ wiktionary_df = pd.read_csv(wiki_path)
 hyp_dic = pyphen.Pyphen(lang='de_DE')
 
 
-otoi = ortho_to_ipa(load = True,fname_ortho= m_path +'/ortho.pt',fname_ipa=m_path +'/ipa.pt',fname_model=m_path +'/ortho_to_ipa.pt')
+otoi = ortho_to_ipa(load = True)
 #####################################################################
-stressed_list = ['NOUN','VERB','ADJ','PROPN','ADV','PERSON']
+stressed_list = ['NOUN','VERB','ADJ','ADV','PERSON']                   # removed PROPN since spacy declared unidentifiable tokens often as PROPN
 unstressed_list = ['CCONJ','CONJ','DET','PART','CCONJ']
 voca_list = ['ah','oh','a','o','u','uh','ach','nun']
 #####################################################################
@@ -49,6 +57,7 @@ class verse_cl():
     '''
     stores a verse and it's metric and grammatical properties
     '''
+
     def __init__(self, text):
         if type(text) == list:
             self.text = text
@@ -56,11 +65,34 @@ class verse_cl():
         else:
             self.text = re.findall(r"[\w']+|[.,!?;]", text)
         self.last_sign = ''
+
+        self.token_pos = []
         self.update()
         #self.doc = nlp(self.text)
         #self.get_rythm_sent()       
         #self.update_token_dict()
         self.context = ''
+        
+        
+    def shorten(self,idx):
+        self.token_pos = self.token_pos[:idx]
+        self.text = self.text[:idx]
+        self.token_starts = self.token_starts[:idx]
+        self.token_ends = self.token_ends[:idx]
+        self.doc = self.doc[:idx]
+        self.rythm_tokens = self.rythm_tokens[:idx]
+        self.ipa = self.ipa[:idx]
+        self.rythm = []
+        dict_tmp = {}
+        for i, key in enumerate(self.token_dict.keys()):
+            dict_tmp[key] = self.token_dict[key]
+            if i == idx - 1:
+                break
+        self.token_dict = dict_tmp
+        for ryt in self.rythm_tokens:
+            self.rythm += ryt
+
+
     def update_token_dict(self):
         offset = 0
         self.token_dict = {}
@@ -99,9 +131,17 @@ class verse_cl():
         doc = self.doc 
         rythm_tokens = []
         rythm = []
+        ipa_lst = []
         for token in doc:
+            self.token_pos.append(token.pos_)
             if token.text.isalpha():
-                stress = list(get_rythm(token.text))    
+                # ipa = ipa_from_ortho(token.text) 
+                stress, ipa, _ = hyphenate_ipa(token.text)
+                ipa_lst.append(ipa)
+                #stress = list(get_rythm(token.text))
+                #stress = list(get_rythm_ipa(token.text, ipa)) 
+ 
+                
                 try:
                     if stress == [0.5] and (token.pos_ in stressed_list):   # if the word contains meaning
                         stress = [1]
@@ -114,24 +154,28 @@ class verse_cl():
                 except:
                     pass
 
-                try:
+                '''try:
                     if token.text in voca_list:               # if the stress of the word is ambiguous
                         stress = [0.5]
                 except:
-                    pass
+                    pass'''
                 rythm_tokens.append(stress)
                 rythm += stress
             else:
+                ipa_lst.append('')
                 rythm_tokens.append([])
 
         self.rythm_tokens = rythm_tokens
         self.rythm = rythm
+        self.ipa = ipa_lst
 
 
 def clean_ipa(ipa_string):
     return re.sub(regex_no_clean_ipa,'',ipa_string)
 
 def ipa_from_ortho(ortho):
+    word_ortho = ortho.lower()
+    word_ortho = re.sub(r'[^a-zäöüß]', '', word_ortho)
     try:
         ipa = (otoi_df.loc[otoi_df['word'] == ortho]['ipa']).values[0]
     except:
@@ -143,12 +187,53 @@ def nearest_idx(arr, val):
     idx = (np.abs(arr-val)).argmin()
     return idx
 
+def get_rythm(word_ortho):
+    if type(word_ortho) == str:
+        word_ortho = word_ortho.lower()
+        word_ortho = re.sub(r'[^a-zäöüß]', '', word_ortho)
+        word = ipa_from_ortho(word_ortho)     # convert the word into ipa symbols (if they are in the table, look them up, else do it with the neural net)
+        rythm = get_rythm_ipa(word_ortho, word)
+    else: 
+        rythm = [2]
+    return rythm
 
-def get_rythm(word_ortho):        # get the rythm of a word
-    word_ortho = word_ortho.lower()
-    word_ortho = re.sub(r'[^a-zäöüß]', '', word_ortho)
-    word = ipa_from_ortho(word_ortho)     # convert the word into ipa symbols (if they are in the table, look them up, else do it with the neural net)
-    word = clean_ipa(word)
+
+
+def hyphenate_word(word):
+
+    syllabs_hyp = hyp_dic.inserted(word, ' ').split()        # hyphenate the word
+    syllabs = []
+    i = 0 
+    while i < len(syllabs_hyp):
+
+        if not (re.search("[aeiouäöüy]",syllabs_hyp[i])):
+    
+            if i < len(syllabs_hyp) - 1 and i > 0:
+                if syllabs_hyp[i-1] > syllabs_hyp[i+1]:
+
+                    syllabs.append(syllabs_hyp[i]+syllabs_hyp[i+1])
+                    i += 2
+                else: 
+               
+                    syllabs[i-1] += syllabs_hyp[i]
+                    i += 1
+            elif i == 0:
+                syllabs.append(syllabs_hyp[i]+syllabs_hyp[i+1])
+                i += 2
+            else: 
+                syllabs[i-1] += syllabs_hyp[i]
+                i += 1
+        else:
+            syllabs.append(syllabs_hyp[i])
+            i += 1
+ 
+    return syllabs       
+
+def get_rythm_ipa(word_ortho, word_ipa):        # get the rythm of a word
+    #word_ortho = word_ortho.lower()
+    #word_ortho = re.sub(r'[^a-zäöüß]', '', word_ortho)
+    #word = ipa_from_ortho(word_ortho)     # convert the word into ipa symbols (if they are in the table, look them up, else do it with the neural net)
+    word = clean_ipa(word_ipa)
     prim_stress = word.find("ˈ")
     if prim_stress == -1:
         return [0.5]
@@ -156,9 +241,7 @@ def get_rythm(word_ortho):        # get the rythm of a word
     else:
         sec_stress = [match.start(0) for match in re.finditer(sec_stress_sep, word)]
 
-        syllabs = hyp_dic.inserted(word_ortho, ' ').split()        # hyphenate the word
-
-
+        syllabs = hyphenate_word(word_ortho)
 
         splits = [0]
         for syllab in syllabs[:-1]:
@@ -242,26 +325,6 @@ def get_all_comb(value_lst,target):
                 all_comb = []
     return all_comb
 
-'''def get_single_comb_rec(value_dict, amount, idx = 0,toll = 10):                        #
-    if amount <= toll:
-        return {} 
-    if idx >= len(value_dict):
-        return None 
-   
-    value = list(value_dict)[idx]
-    count = list(value_dict.values())[idx]
-    idx += 1
-    
-    canTake = min(amount // value, count)
-  
-    for count_ in range(canTake, -1, -1): 
-        rest = get_single_comb_rec(value_dict, amount - value * count_, idx)
-        if rest != None: 
-            if count_: 
-                rest[value] = count
-                return rest
-            return rest
-'''
 
 def get_single_comb(value_lst, amount, intersection, min_syll, toll = 5):        # this could be improved, the goal is an unperfect result with a minimum of computational time
     '''
@@ -368,15 +431,3 @@ def get_best_comb(value_lst, target):
 
 
 
-
-
-
-ipa_groups = {                                                                                  # it are not the correct signs, but the cleaned version, correct would be:
-                'plosives':'p,b,p,b,t,d,t,d,t,d,t,d,t,d,t,d,t,d,ʈ,ɖ,c,ɟ,k,ɢ,ʡ,ʔ',               # p,⁠b⁠,p̪⁠,b̪,⁠t̼⁠⁠,d̼,⁠t̟,d̟⁠⁠⁠,⁠t̺⁠,d̺,⁠t̪⁠,⁠d̪⁠,⁠t,d⁠,⁠t̻⁠,d̻⁠,t̠⁠,⁠d̠⁠,ṭ⁠,ḍ⁠,⁠ʈ⁠,ɖ⁠,⁠c,⁠ɟ⁠,⁠k,⁠g⁠,⁠q⁠,⁠ɢ⁠,⁠ʡ,ʔ⁠
-                'fricatives': 'ɸ,β,f,v,θ,ð,s,z,ɬ,ɮ,ʃ,ʒ,ʂ,ʐ,ɕ,ʑ,ç,ʝ,x,ɣ,ʍ,ɧ,χ,ʁ,ħ,ʜ,ʢ,h,ɦ,s,f',  # ɸ⁠,β⁠,⁠⁠f⁠,⁠v⁠,θ⁠,⁠ð⁠,⁠s,z⁠,⁠ɬ⁠,⁠ɮ,ʃ⁠,ʒ⁠,⁠ʂ,⁠ʐ⁠,⁠ɕ,⁠ʑ⁠,⁠ç⁠,⁠ʝ⁠,⁠x,⁠ɣ,ʍ⁠,ɧ⁠,χ⁠,ʁ,ħ⁠⁠,⁠ʕ⁠,⁠ʜ⁠,⁠ʢ⁠,h⁠,ɦ,⁠s’,fʼ⁠
-                'nasals':'m,m,ɱ,ɱ,n,n,ɳ,ɳ,ɲ,ɲ,ŋ,ŋ,ɴ,ɴ⁠',                                         # ⁠m,m̥⁠⁠,ɱ,ɱ̊⁠,⁠⁠n⁠,n̥⁠,⁠ɳ,⁠ɳ̊,ɲ⁠,ɲ̊⁠,ŋ⁠,ŋ̊⁠,ɴ⁠,⁠ɴ̥⁠
-                'liquides':'ə,l,r', 
-                'approximates':'j,w',
-                'vowels_closed':'ɪ,i,i,ʏ,y,y,ʊ,u,u',                                            #ɪ,i,iː,ʏ,y,yː,ʊ,u,uː
-                'vowels':'i,e,ɛ,æ,ɑ,ɔ,o,u,a,a,ɐ'                                                #i,e,ɛ,æ,ɑ,ɔ,o,u,a,aː,ɐ
-            }

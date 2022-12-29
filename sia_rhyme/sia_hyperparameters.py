@@ -25,4 +25,4 @@ max_len = 20
 max_len_translate = 30
 
 # system
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
