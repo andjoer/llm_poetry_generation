@@ -246,8 +246,8 @@ def gpt_sample_systematic(verse,LLM,num_return_sequences = 100,loop_limit = 1000
     block_tokens = block_tokens_0
     block_tokens_num = LLM.block_tokens_num
 
-    linebreak = tokenizer.encode('\n')[0]
-
+    # linebreak = tokenizer.encode('\n')[0]
+    linebreak = 199                       # due to colab issue
     sm = torch.nn.Softmax(dim = 1)
 
     

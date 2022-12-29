@@ -243,7 +243,7 @@ def generate_poetry(args,
                 break
 
             elif line =='**':                                   
-                if j > 1 and not tmp_lst or shots == 1:                         # we could try again but  we basically tried enough  -> stop           
+                if (j > 1 and not tmp_lst) or shots == 1:                         # we could try again but  we basically tried enough  -> stop           
                     return print_text, rating
 
             else:        
@@ -255,9 +255,7 @@ def generate_poetry(args,
                 
                 if args.check_end == True: 
                     perplexity_check_text += '.'
-                
-                print('perp text')
-                print(perplexity_check_text)
+
                 perp = perplexity(perplexity_check_text,LLM_perplexity)
                 perp_lst.append(perp) # measure the perplexity of the verse
 
@@ -397,7 +395,7 @@ def initialize_llms(args):
         else:
             LLM_rhyme = LLM
 
-    elif not args.LLM_rhyme:
+    elif not args.LLM_rhyme and args.LLM_rhyme_sampling != 'multinomial':
         if (LLM_sampling != args.LLM_rhyme_sampling and args.LLM_rhyme_sampling) and torch.cuda.device_count() > 1:
             LLM_rhyme = LLM_class(LLM.model_name,sampling=args.LLM_rhyme_sampling, device='cuda:1')
 
@@ -409,8 +407,15 @@ def initialize_llms(args):
         else: 
             LLM_rhyme = LLM_class(LLM.model_name,sampling=args.LLM_rhyme_sampling,device='cpu')
 
+    
+    elif not args.LLM_rhyme and args.LLM_rhyme_sampling == 'multinomial':
+        LLM_rhyme = LLM_class(LLM.model_name,sampling=args.LLM_rhyme_sampling,device='cpu')
     else: 
-        if not LLM_2 and type(LLM) == str and torch.cuda.device_count() > 0:                        # LLM via API
+
+        if args.LLM_rhyme_sampling == 'multinomial':
+            LLM_rhyme = LLM_class(args.LLM_rhyme,sampling=args.LLM_rhyme_sampling,device='cpu')
+
+        elif not LLM_2 and type(LLM) == str and torch.cuda.device_count() > 0:                        # LLM via API
             LLM_rhyme = LLM_class(args.LLM_rhyme,sampling=args.LLM_rhyme_sampling,device = 'cuda:0')
 
         elif not LLM_2 and torch.cuda.device_count() > 1:
@@ -420,6 +425,9 @@ def initialize_llms(args):
             LLM_rhyme = LLM_class(args.LLM_rhyme,sampling=args.LLM_rhyme_sampling,device = 'cuda:1') 
         else:
             LLM_rhyme = LLM_class(args.LLM_rhyme,sampling=args.LLM_rhyme_sampling,device = 'cpu')
+
+    if args.LLM_rhyme_sampling == 'multinomial':
+        LLM_rhyme.device = 'cpu'
 
     LLM_perplexity = None
 
@@ -455,6 +463,9 @@ def initialize_llms(args):
 
     elif LLM_perplexity.sampling != 'systematic':
         LLM_perplexity = LLM_class(LLM_perplexity.model_name,device=perplexity_device)
+
+    print('perp device')
+    print(LLM_perplexity.device)
 
     return LLM, LLM_perplexity, LLM_rhyme, LLM_2
 
