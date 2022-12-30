@@ -22,7 +22,7 @@ class LLM_class:
         self.model_name = model_name
         self.device = device
         self.sampling = sampling
-        if "cuda" in device and sampling != 'systematic':
+        '''if "cuda" in device and sampling != 'systematic':
             if device[-1].isnumeric():
                 device_pipeline = int(device[-1])
 
@@ -30,18 +30,18 @@ class LLM_class:
                 device_pipeline = 0
 
         else: 
-            device_pipeline = -1
+            device_pipeline = -1'''
 
         if not tokenizer_name: 
             self.tokenizer_name = model_name
         else: 
             self.tokenizer_name = tokenizer_name
 
-        if sampling == 'systematic':
-            self.model = GPT2LMHeadModel.from_pretrained(model_name).to(self.device)
-        else: 
-            self.model = pipeline('text-generation', model=model_name,
-                        tokenizer=model_name, framework = 'pt',device = device_pipeline)
+        #if sampling == 'systematic':
+        self.model = GPT2LMHeadModel.from_pretrained(model_name).to(self.device)
+        #else: 
+            #self.model = pipeline('text-generation', model=model_name,
+                        #tokenizer=model_name, framework = 'pt',device = device_pipeline)
             
         self.tokenizer = GPT2Tokenizer.from_pretrained(model_name)
         if sampling == 'systematic':
@@ -61,13 +61,28 @@ class LLM_class:
 
 
 
-def gpt2(input_text,LLM, max_length= 10, num_return_sequences=5,stop=['\n']):
+def gpt2(input_text,LLM, max_length= 10, num_return_sequences=5,stop=['\n'],repetition_penalty = 1.15,top_p = 1,temperature = 0.8, block_linebreak = False):
 
-    max_length += LLM.tokenizer.encode(input_text,return_tensors='pt').size(1)
+    input_ids = LLM.tokenizer.encode(input_text,return_tensors='pt').to(LLM.device)
+    max_length += input_ids.size(1)
     
-    generated = LLM.model(input_text, max_length=max_length,return_full_text = False, num_return_sequences=num_return_sequences,repetition_penalty=1.2)
+    #generated = LLM.model(input_text, max_length=max_length,return_full_text = False, num_return_sequences=num_return_sequences,repetition_penalty=1.2)
+
+    generated = LLM.model.generate(
+                                        input_ids,
+                                        do_sample=True, 
+                                        max_length=max_length, 
+                                        top_p=top_p, 
+                                        temperature = temperature,
+                                        num_return_sequences=num_return_sequences,
+                                        repetition_penalty = repetition_penalty
+                                    )
     
-    return [item['generated_text'] for item in generated]
+    #return [item['generated_text'] for item in generated]
+    if block_linebreak:
+        return [' ' + LLM.tokenizer.decode(item[input_ids.size(1):], skip_special_tokens=True) for item in generated if item[input_ids.size(1)] != 199]
+    else: 
+        return [' ' + LLM.tokenizer.decode(item[input_ids.size(1):], skip_special_tokens=True) for item in generated]
 
 
 '''
@@ -175,7 +190,7 @@ def get_num_ngram(sentence, N):
 
 def gpt_sample_systematic(verse,LLM,num_return_sequences = 100,loop_limit = 10000, num_words_remove = None, top_p = None,top_k = 20, temperature = 0.9,random_first = False, random_all = False,stop_tokens_alpha = [],block_non_alpha = True,
                         top_p_dict = {},pos=False,check_rythm = True, target_rythm = [],num_syll = None,num_syll_tollerance = 1,last_stress = None, trunkate_after = 100,pos_alternative = False,factor_stop_token=0.2,bigram_limit=2, trigram_limit = 1,
-                        dividable_rest=False, only_alpha_after = 3,allow_pos_match=False):
+                        dividable_rest=False, only_alpha_after = 3,allow_pos_match=False,repetition_penalty=1.2,invalid_verse_ends = []):
 
  
     if num_words_remove and type(verse) != str:
@@ -308,10 +323,19 @@ def gpt_sample_systematic(verse,LLM,num_return_sequences = 100,loop_limit = 1000
            
             logits = outputs.logits[:,-1,:]/temperature
 
-            logits[:,input_tokens[0,-3:]] = -float('inf') # avoid repetition
+            logits[:,input_tokens[0,-3:]] = -float('inf') # avoid repetition within the last 3 logits
 
+            #blocked tokens
             logits[:,block_tokens] = -float('inf')
             logits[:,block_tokens_num] = -float('inf')
+            
+            #repetition panelty
+            for previous_token in set(input_tokens[0].tolist()):
+                # if score < 0 then repetition penalty has to multiplied to reduce the previous token probability
+                if logits[:, previous_token] < 0:
+                    logits[:, previous_token] *= repetition_penalty
+                else:
+                    logits[:, previous_token] /= repetition_penalty
 
             last_token_test = 'test' + tokenizer.decode(torch.argmax(logits))                                   # check if next token contains a space
 
@@ -327,6 +351,7 @@ def gpt_sample_systematic(verse,LLM,num_return_sequences = 100,loop_limit = 1000
                 last_word_start = len(possible_tokens)
                 generated_verse = verse_cl(generated)
                
+                
                 if num_words_remove and generated[0] != ' ':
                     fulfill_requirements = False
 
@@ -346,6 +371,10 @@ def gpt_sample_systematic(verse,LLM,num_return_sequences = 100,loop_limit = 1000
                     pos_match_end = True
                 else: 
                     pos_match_end = False
+
+                if invalid_verse_ends and generated_verse.token_pos in invalid_verse_ends:
+                    possible_end = False
+
                 if num_syll:
                     if len(generated_verse.rythm) < num_syll*num_syll_tollerance:
                         
@@ -394,6 +423,9 @@ def gpt_sample_systematic(verse,LLM,num_return_sequences = 100,loop_limit = 1000
                 else: 
                     fulfill_requirements = False
                 possible_end = False
+
+            if torch.argmax(logits) == linebreak and not possible_end:
+                fulfill_requirements = False
 
             if fulfill_requirements:
 

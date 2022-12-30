@@ -45,6 +45,8 @@ def find_rhyme(args,verse_lst,idx1,idx2,LLM_perplexity,last_stress = -2, LLM='',
     stop_tokens = args.rhyme_stop_tokens
     rhyme_temperature = args.rhyme_temperature
     allow_pos_match = args.allow_pos_match
+    invalid_verse_ends = args.invalid_verse_ends
+    repetition_penalty = args.repetition_penalty
 
     min_dist = 0.04
     
@@ -92,19 +94,24 @@ def find_rhyme(args,verse_lst,idx1,idx2,LLM_perplexity,last_stress = -2, LLM='',
 
     if idx2 == len(verse_lst) - 1:
         causal = True
-        causal_syns = gpt_synonyms(verse_lst[idx2],target_rythm,num_remove = 1,num_return_sequences = 200,LLM=LLM,eol=eol,use_pos = use_pos,top_p_dict =top_p_dict_rhyme ,temperature=rhyme_temperature,top_k=50,stop_tokens=stop_tokens,allow_pos_match=allow_pos_match)
+        causal_syns = gpt_synonyms(verse_lst[idx2],target_rythm,num_remove = 1,num_return_sequences = 200,LLM=LLM,eol=eol,use_pos = use_pos,top_p_dict =top_p_dict_rhyme ,temperature=rhyme_temperature,top_k=50,
+                        stop_tokens=stop_tokens,allow_pos_match=allow_pos_match,invalid_verse_ends=invalid_verse_ends,repetition_penalty=repetition_penalty)
         
-        causal_syns += gpt_synonyms(verse_lst[idx2],target_rythm,num_remove=2,num_return_sequences = 150,LLM=LLM,eol=eol,use_pos = use_pos,stop_tokens=stop_tokens,temperature=rhyme_temperature,top_p = top_p_rhyme,allow_pos_match=allow_pos_match)[1:]        
+        causal_syns += gpt_synonyms(verse_lst[idx2],target_rythm,num_remove=2,num_return_sequences = 150,LLM=LLM,eol=eol,use_pos = use_pos,stop_tokens=stop_tokens,temperature=rhyme_temperature,top_p = top_p_rhyme,
+                        allow_pos_match=allow_pos_match,invalid_verse_ends=invalid_verse_ends,repetition_penalty=repetition_penalty)[1:]        
 
         if len(causal_syns) < 10 and not LLM2: 
-            causal_syns = gpt_synonyms(verse_lst[idx2],target_rythm,num_remove = 3,num_return_sequences = 140,LLM=LLM,eol=eol,use_pos = use_pos,temperature=rhyme_temperature,stop_tokens=stop_tokens,top_p = top_p_rhyme,allow_pos_match=allow_pos_match)[1:]       # alternatives for the second verse
+            causal_syns = gpt_synonyms(verse_lst[idx2],target_rythm,num_remove = 3,num_return_sequences = 140,LLM=LLM,eol=eol,use_pos = use_pos,temperature=rhyme_temperature,stop_tokens=stop_tokens,top_p = top_p_rhyme,
+            allow_pos_match=allow_pos_match,invalid_verse_ends=invalid_verse_ends,repetition_penalty=repetition_penalty)[1:]       # alternatives for the second verse
 
         if sampling == 'systematic':           # try as well with matching pos labels instead of correct prediction of new line
             eol = False
             use_pos = True
-            causal_syns += gpt_synonyms(verse_lst[idx2],target_rythm,num_remove = 1,num_return_sequences = 200,LLM=LLM,eol=eol,use_pos = use_pos,temperature=rhyme_temperature,top_p_dict =top_p_dict_rhyme,top_k=50)
+            causal_syns += gpt_synonyms(verse_lst[idx2],target_rythm,num_remove = 1,num_return_sequences = 200,LLM=LLM,eol=eol,use_pos = use_pos,temperature=rhyme_temperature,top_p_dict =top_p_dict_rhyme,top_k=50,
+                        invalid_verse_ends=invalid_verse_ends,repetition_penalty=repetition_penalty)
         
-            causal_syns += gpt_synonyms(verse_lst[idx2],target_rythm,num_remove=2,num_return_sequences = 150,LLM=LLM,eol=eol,use_pos = use_pos,temperature=rhyme_temperature,top_p = top_p_rhyme )[1:]        
+            causal_syns += gpt_synonyms(verse_lst[idx2],target_rythm,num_remove=2,num_return_sequences = 150,LLM=LLM,eol=eol,use_pos = use_pos,temperature=rhyme_temperature,top_p = top_p_rhyme ,
+                        invalid_verse_ends=invalid_verse_ends,repetition_penalty=repetition_penalty)[1:]        
 
 
     else:

@@ -290,7 +290,7 @@ def extend_verse(verse,target_rythm,target_len,LLM_perplexity): # extend the ver
 
    
         #verse.text = ' '.join(text)
-        verse.update(text)
+        verse = verse_cl(text)
         print('text:')
         print(' '.join(verse.text))
         print('rythm:')
@@ -354,7 +354,7 @@ def extend_verse(verse,target_rythm,target_len,LLM_perplexity): # extend the ver
         else: text = str(verse.doc).split()[:token_idx+1] +[fill_word_5] + sign
 
         #verse.text = ' '.join(text)
-        verse.update(text)  
+        verse = verse_cl(text)  
         print('text:')
         print(' '.join(verse.text))
         print('rythm:')

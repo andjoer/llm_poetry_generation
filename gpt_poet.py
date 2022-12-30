@@ -28,19 +28,18 @@ def modify_verse(args,verse,LLM_2,num_remove = 1):
     print('modify verse')
     print(' '.join(verse.text))
 
-    print('num_remove')
-    print(num_remove)
     target_rythm = args.target_rythm
     top_p_dict = args.top_p_dict_replace
+    top_p = args.LLM_2_top_p
+    temperature = args.LLM_2_temperature
+
     #token_pos = verse.token_pos[-1]
     if LLM_2.sampling != 'systematic':
         num_return_sequences = 120
     else: 
         num_return_sequences = 1
-    new_sent = gpt_synonyms(verse,target_rythm,num_remove=num_remove, use_pos = True,eol = False,LLM = LLM_2,num_return_sequences=num_return_sequences,top_p_dict =top_p_dict)
+    new_sent = gpt_synonyms(verse,target_rythm,num_remove=num_remove, use_pos = True,eol = False,LLM = LLM_2,num_return_sequences=num_return_sequences,top_p_dict =top_p_dict,top_p=top_p,temperature=temperature)
 
-    print('new sent')
-    print(new_sent)
     new_words = new_sent[-1].split()[-num_remove:]
    
     verse.text = verse.text[:-num_remove]
@@ -92,6 +91,8 @@ def gpt_poet(args,input_text, num_syll,title_accepted, LLM = None,LLM_2=None):
     random_all = args.LLM_random_all
     only_alpha_after = args.verse_alpha_only_after
     dividable_rest = args.dividable_rest
+    invalid_verse_ends = args.invalid_verse_ends
+    repetition_penalty = args.repetition_penalty
 
     len_past = 450
     current_num_syll = 0
@@ -144,7 +145,8 @@ def gpt_poet(args,input_text, num_syll,title_accepted, LLM = None,LLM_2=None):
                 random_first = False
 
             generated = gpt_sample_systematic(input_text_new,LLM,num_return_sequences = 1,top_p = top_p_current,top_k = 20, temperature = temperature,random_first = random_first, random_all = random_all,stop_tokens_alpha = stop_tokens,block_non_alpha = False,
-                                                num_syll=pending_syllables,target_rythm=target_rythm_shifted, last_stress=last_stress,num_syll_tollerance=num_syll_tollerance,trunkate_after = trunkate_after,dividable_rest=dividable_rest,only_alpha_after = only_alpha_after)
+                                                num_syll=pending_syllables,target_rythm=target_rythm_shifted, last_stress=last_stress,num_syll_tollerance=num_syll_tollerance,trunkate_after = trunkate_after,dividable_rest=dividable_rest,
+                                                only_alpha_after = only_alpha_after,invalid_verse_ends=invalid_verse_ends,repetition_penalty=repetition_penalty)
 
             if generated:
                 top_p_current = top_p
@@ -156,13 +158,14 @@ def gpt_poet(args,input_text, num_syll,title_accepted, LLM = None,LLM_2=None):
 
         else:
 
-            generated = LLM_poet(input_text_new, LLM, max_length= 20,num_return_sequences=20) # generate from the prompt
+            generated = LLM_poet(input_text_new, LLM, max_length= 20,num_return_sequences=20,repetition_penalty = repetition_penalty,top_p = top_p,temperature = temperature) # generate from the prompt
+
 
         candidates_ends = []
         candidates = []
 
         for text in generated:
-
+            line = None
             lines = text.strip().split('\n')         # only one verse, so cut the rest from the generation
 
             idx_0 = -1
@@ -237,7 +240,7 @@ def gpt_poet(args,input_text, num_syll,title_accepted, LLM = None,LLM_2=None):
 
                 if len(rythm) > 0:         # rythm has [-1]
 
-                    if np.sum(comp) == 0 and len(rythm) <= num_syll and len(rythm) >= num_syll*num_syll_tollerance and ((num_syll - len(rythm))%len(target_rythm) == 0 or not dividable_rest): # if the resulting verse is long enough: finsihed (rythm[-1] == last or rythm[-1] == 0.5)
+                    if np.sum(comp) == 0 and len(rythm) <= num_syll and len(rythm) >= num_syll*num_syll_tollerance and ((num_syll - len(rythm))%len(target_rythm) == 0 or not dividable_rest) and (not invalid_verse_ends or verse.token_pos not in invalid_verse_ends): # if the resulting verse is long enough: finsihed (rythm[-1] == last or rythm[-1] == 0.5)
 
                         if need_replacement:
                             verse = modify_verse(args, verse,LLM_2,num_remove=num_remove)
@@ -370,7 +373,8 @@ def gpt_poet_analysis(input_text, target_rythm,num_syll,require_last=False,num_b
             new_text +=  candidates[best_idx] + ' '
             input_text_new = input_text_title + ' '+ new_text 
 
-def gpt_synonyms(verse,target_rythm,num_remove=2, max_length = 10, LLM=None, eol = False,use_pos = False, elastic = False,num_return_sequences=150,top_p_dict = {},top_p = 0.5,temperature = 0.9,top_k=20,stop_tokens=['\n','.','!','?',','],allow_pos_match=False):
+def gpt_synonyms(verse,target_rythm,num_remove=2, max_length = 10, LLM=None, eol = False,use_pos = False, elastic = False,num_return_sequences=150,top_p_dict = {},top_p = 0.5,temperature = 0.9,top_k=20,
+                stop_tokens=['\n','.','!','?',','],allow_pos_match=False,invalid_verse_ends=[],repetition_penalty= 1):
 
     if type(LLM) != str:
         if LLM.sampling == 'systematic':
@@ -385,17 +389,20 @@ def gpt_synonyms(verse,target_rythm,num_remove=2, max_length = 10, LLM=None, eol
         if not eol:
             stop_tokens = None
         outputs = gpt_sample_systematic(verse,LLM,num_return_sequences=num_return_sequences, num_words_remove = num_remove,pos=use_pos,check_rythm = True, target_rythm = target_rythm,top_p_dict=top_p_dict,stop_tokens_alpha=stop_tokens,
-                                            temperature=temperature,top_p=top_p,top_k = top_k,allow_pos_match=allow_pos_match)
+                                            temperature=temperature,top_p=top_p,top_k = top_k,allow_pos_match=allow_pos_match,invalid_verse_ends=invalid_verse_ends,repetition_penalty=repetition_penalty)
         lines = [verse_text + output for output in outputs]
         if not lines: 
             lines = [' '.join(verse.text)]
     else: 
-        lines = gpt_sample_synonyms(verse,target_rythm,num_remove=num_remove, max_length = max_length, LLM=LLM, eol = eol, use_pos = use_pos, elastic = False,num_return_sequences=num_return_sequences,allow_pos_match=allow_pos_match)
+        lines = gpt_sample_synonyms(verse,target_rythm,num_remove=num_remove, max_length = max_length, LLM=LLM, eol = eol, use_pos = use_pos, elastic = False,num_return_sequences=num_return_sequences,allow_pos_match=allow_pos_match,
+        invalid_verse_ends=invalid_verse_ends,repetition_penalty=repetition_penalty,top_p=top_p,temperature=temperature)
+
     return lines
 
 
 
-def gpt_sample_synonyms(verse,target_rythm,num_remove=2, max_length = 10, LLM=None, eol = True, use_pos = True, elastic = False,num_return_sequences=150,allow_pos_match = False):
+def gpt_sample_synonyms(verse,target_rythm,num_remove=2, max_length = 10, LLM=None, eol = True, use_pos = True, elastic = False,num_return_sequences=150,allow_pos_match = False,invalid_verse_ends=[],
+                        repetition_penalty=1,top_p = 1,temperature = 0.9):
 
     '''
     create alternative Verse endings
@@ -430,10 +437,10 @@ def gpt_sample_synonyms(verse,target_rythm,num_remove=2, max_length = 10, LLM=No
         
     if type(LLM) != str:
 
-        generated = gpt2(input_text_cont, LLM, max_length=10,num_return_sequences=num_return_sequences)
+        generated = gpt2(input_text_cont, LLM, max_length=10,num_return_sequences=num_return_sequences,repetition_penalty=repetition_penalty,top_p = top_p,temperature = temperature)
 
     elif LLM == 'GPT3':
-        generated = gpt3(input_text_cont, LLM, max_length=max_length,num_return_sequences=128)
+        generated = gpt3(input_text_cont, LLM, max_length=max_length,num_return_sequences=128,repetition_penalty=repetition_penalty,top_p = top_p,temperature = temperature)
     else:
         raise Exception('invalid LLM selection')
     
@@ -458,13 +465,14 @@ def gpt_sample_synonyms(verse,target_rythm,num_remove=2, max_length = 10, LLM=No
             created_lines.append(next_text)
             line_clean = ' '.join(re.sub('[^A-Za-zäöüÄÖÜß ]', ' ', line).split()).strip()
             verse_tmp = verse_cl(input_text  +' '+ line_clean)
+
+            condition = True
        
+            
             if use_pos and verse_tmp.token_pos[-num_remove:] != pos[-num_remove:]:
                 condition = False
                 
-            else:
-                condition = True
-
+         
             if elastic:
                     target_rythm_ext = np.asarray(extend_target_rythm(verse_tmp.rythm,target_rythm))
             
@@ -478,6 +486,10 @@ def gpt_sample_synonyms(verse,target_rythm,num_remove=2, max_length = 10, LLM=No
 
                     if verse_tmp.token_pos[-num_remove:] == pos[-num_remove:]:
                         condition = True
+
+
+            if invalid_verse_ends and verse_tmp.token_pos[-1] in invalid_verse_ends:
+                condition = False
 
             rythm =  np.asarray(verse_tmp.rythm)
             if len(target_rythm) > 0 and condition:  

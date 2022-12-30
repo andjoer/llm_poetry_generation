@@ -209,7 +209,8 @@ def generate_poetry(args,
     freq = len(rhyme_scheme)  # number of verses per strophe
 
     input_text = prompt
-
+    print('input_text')
+    print(input_text)
     lines = []
 
     verse_lst = []
@@ -315,6 +316,8 @@ def parse_arguments():
     parser.add_argument("--generated_lines", type=int,default=8,help="number of lines that will be generated")
     parser.add_argument("--verse_versions", type=int,default=1,help="number of versions for one verse will be generated; the one with lowest perplexity will be chosen")
     parser.add_argument("--check_end", type=str_eval,default=True,help="append '.' after verse to check perplexity") # experimental, might help to avoid invalid end of verses
+    parser.add_argument("--invalid_verse_ends", type=str_eval,default=['CONJ','CCONJ'],help="pos tokens that should not appear at the end of a verse")
+    parser.add_argument("--repetition_penalty", type=int,default=1.2,help="repetition penalty according to CTRL paper")
 
     parser.add_argument("--LLM", type=str,default='Anjoe/german-poetry-gpt2-large',help="generative language model to use from the huggingface library or GPT3")
     parser.add_argument("--LLM_sampling", type=str,default='systematic',help="sampling method for gpt2 models - systematic or multinomial")
@@ -322,7 +325,7 @@ def parse_arguments():
     parser.add_argument("--LLM_random_all", type=str,default=True,help="mix the top p filtered logits at every position by multinomial sampling")
     parser.add_argument("--LLM_temperature", type=int,default=0.9,help="sampling temperature for systematic verse sampling")
     parser.add_argument("--trunkate_after", type=int,default=50,help="number of tries after which the search beam will be trunkated when sampling = systematic")
-    parser.add_argument("--LLM_top_p", type=int,default=0.6,help="top p filter value used if sampling = systematic for the initial verse")
+    parser.add_argument("--LLM_top_p", type=int,default=None,help="top p filter value used if sampling = systematic for the initial verse")
     parser.add_argument("--syllable_count_toll", type=int,default=0.65,help="precentage of the allowed difference between target syllables and delivered syllables by gpt_poet")
     parser.add_argument("--dividable_rest", type=str_eval,default=True,help="if the number of pending syllables left by gpt_poet need to be devidable by the length of the target rythm")   # then bert would not need to find a different ending
     parser.add_argument("--verse_stop_tokens", type=str_eval,default=['\n','.'],help="list of tokens after which a verse could end (only applies when sampling = systematic)")
@@ -332,6 +335,8 @@ def parse_arguments():
     parser.add_argument("--LLM_2", type=str,default=None,help="model to replace words with certain pos tags")
     parser.add_argument("--LLM_2_pos", type=str_eval,default=['NOUN','PROPN'],help="pos token of the words that should be replaced by the second language model")
     parser.add_argument("--LLM_2_sampling", type=str,default='systematic',help="sampling method for the second language model - systematic or multinomial")
+    parser.add_argument("--LLM_2_temperature", type=int,default=0.9,help="temperature for the second LLM")
+    parser.add_argument("--LLM_2_top_p", type=int,default=0.8,help="top p for the second LLM when the sampling is multinomial")
     parser.add_argument("--top_p_dict_replace", type=str_eval,default={0:0.8,1:0.4},help="top p dictionary used for the words replaced by the second model")
 
     parser.add_argument("--LLM_rhyme", type=str,default=None,help="generative language model to use from the huggingface library or gpt3")
@@ -340,8 +345,8 @@ def parse_arguments():
     
     parser.add_argument("--use_pos_rhyme_syns", type=str_eval,default=True,help="synonyms with the same pos tokens are allowed when looking for rhymes (only if sampling = systematic)")
     parser.add_argument("--top_p_dict_rhyme", type=str_eval,default={0:0.65,2:0.5},help="top p dictionary used to find rhyming alternatives for a single word")
-    parser.add_argument("--top_p_rhyme", type=int,default=0.6,help="top p value used to find rhyming alternatives for longer sequences")
-    parser.add_argument("--max_rhyme_dist", type=int,default=0.5,help="maximum siamese vector distances of two words in order to be considered rhyming")
+    parser.add_argument("--top_p_rhyme", type=int,default=None,help="top p value used to find rhyming alternatives for longer sequences")
+    parser.add_argument("--max_rhyme_dist", type=int,default=None,help="maximum siamese vector distances of two words in order to be considered rhyming")
     parser.add_argument("--rhyme_stop_tokens", type=str_eval,default=['\n','.'],help="list of tokens after which a verse could end (only applies when sampling = systematic)")  
 
     parser.add_argument("--rhyme_scheme", type=str,default=None,help="rhyme scheme for the created poem")
@@ -355,6 +360,33 @@ def parse_arguments():
     
     args = parser.parse_args()
 
+
+    #LLM dependent defaults
+
+    if not args.max_rhyme_dist:
+        if not args.use_tts:
+            args.max_rhyme_dist = 0.45
+        else: 
+            args.max_rhyme_dist = 0.6
+
+    if not (args.LLM_rhyme or args.LLM_2): 
+        if len(args.LLM) <= 5:                                        # API
+            args.top_p_rhyme = 1
+            args.LLM_rhyme = args.LLM
+        elif args.LLM_rhyme_sampling != 'systematic':
+            args.top_p_rhyme = 1 
+        else: 
+            args.top_p_rhyme = 0.6
+
+    if len(args.LLM) < 5:
+        args.LLM_sampling = 'multinomial'
+
+    if args.LLM_sampling == 'multinomial' and not args.LLM_top_p:
+        args.LLM_top_p = 1
+    elif args.LLM_sampling != 'multinomial' and not args.LLM_top_p:
+        args.LLM_top_p = 0.6
+
+
     return args
 
 def initialize_llms(args):
@@ -366,13 +398,15 @@ def initialize_llms(args):
         LLM_device = 'cpu'
 
     default_llm = 'Anjoe/german-poetry-gpt2-large'
+
+    
     if args.LLM == 'GPT2-large':                                                        # backwards compatibility
         LLM = LLM_class(default_llm,sampling='multinomial')
 
 
     if len(args.LLM) > 5:          # ohterwise it is string for an api, not a huggingface link
         LLM = LLM_class(args.LLM,device=LLM_device,sampling=args.LLM_sampling)
-        
+    else: LLM = args.LLM
   
     if args.LLM_2:
         if torch.cuda.device_count() > 1 and type(LLM) != str:
@@ -386,8 +420,7 @@ def initialize_llms(args):
     else:
         LLM_2 = None
 
-    if LLM == 'GPT3':
-        args.prompt = 'schreibe ein Gedicht auf Deutsch \n' + args.prompt
+    
 
     if LLM_2 and not args.LLM_rhyme:
         if args.LLM_rhyme_sampling == 'multinomial' or args.LLM_2_sampling == 'multinomial':
@@ -412,7 +445,9 @@ def initialize_llms(args):
         LLM_rhyme = LLM_class(LLM.model_name,sampling=args.LLM_rhyme_sampling,device='cpu')
 
     else: 
-        if args.LLM_rhyme_sampling == 'multinomial':
+        if len(args.LLM_rhyme) <= 5:
+            LLM_rhyme = args.LLM_rhyme
+        elif args.LLM_rhyme_sampling == 'multinomial':
             LLM_rhyme = LLM_class(args.LLM_rhyme,sampling=args.LLM_rhyme_sampling,device='cpu')
 
         elif not LLM_2 and type(LLM) == str and torch.cuda.device_count() > 0:                        # LLM via API
@@ -450,17 +485,11 @@ def initialize_llms(args):
 
     if LLM_2:
         LLM_perplexity = LLM_2
-    else:
-        if args.LLM_rhyme_sampling == 'systematic' and args.LLM_sampling != 'systematic':
-            LLM_perplexity = LLM_rhyme
-        elif type(LLM) != str: 
-            LLM_perplexity = LLM
+    elif type(LLM) != str: 
+        LLM_perplexity = LLM
 
     if not LLM_perplexity:
         LLM_perplexity = LLM_class(default_llm,device=perplexity_device)
-
-    elif LLM_perplexity.sampling != 'systematic':
-        LLM_perplexity = LLM_class(LLM_perplexity.model_name,device=perplexity_device)
 
 
     return LLM, LLM_perplexity, LLM_rhyme, LLM_2
@@ -541,12 +570,17 @@ if __name__ == "__main__":
             if not target_rythm_0:
                 args.target_rythm = jambus
             
+        if args.LLM == 'GPT3':
+            args.prompt = 'schreibe ein Gedicht auf Deutsch \n' + args.prompt
+
         print('parameters')
+
         print('############## begin parameters ##############')
         for arg in vars(args):
             print(str(arg) + ': ' + str(getattr(args, arg)))
-
         print('############## end of parameters ##############')
+
+
         print('LLM: ' + str(get_LLM_name(LLM)))
         print('LLM_rhyme: ' + str(get_LLM_name(LLM_rhyme)))
         print('iterations per verse: ' + str(args.verse_versions))

@@ -257,7 +257,7 @@ def hyphenate_ipa(word):
 
 if __name__ == "__main__":  
 
-    word = 'größer'
+    word = 'große'
     word = re.sub('[ß]', 's', word)
     word = re.sub('[^A-Za-zäöüÄÖÜ]', '', word)
     stress_lst, ipa, syllables = hyphenate_ipa(word)
