@@ -6,7 +6,7 @@ import numpy as np
 from rhyme import find_rhyme
 from rythm import fix_rythm, verse_cl
 import copy 
-import argparse
+import argparse, ast
 
 from gpt2 import LLM_class
 from gpt_poet import gpt_poet
@@ -305,6 +305,8 @@ def generate_poetry(args,
 
     return print_text, rating
 
+def str_eval(string):
+    return ast.literal_eval(str(string))
 
 def parse_arguments():
     parser = argparse.ArgumentParser()
@@ -312,44 +314,44 @@ def parse_arguments():
     parser.add_argument("--title", type=str,default='Die Regierung',help="title of the poem") 
     parser.add_argument("--generated_lines", type=int,default=8,help="number of lines that will be generated")
     parser.add_argument("--verse_versions", type=int,default=1,help="number of versions for one verse will be generated; the one with lowest perplexity will be chosen")
-    parser.add_argument("--check_end", type=bool,default=True,help="append '.' after verse to check perplexity") # experimental, might help to avoid invalid end of verses
+    parser.add_argument("--check_end", type=str_eval,default=True,help="append '.' after verse to check perplexity") # experimental, might help to avoid invalid end of verses
 
     parser.add_argument("--LLM", type=str,default='Anjoe/german-poetry-gpt2-large',help="generative language model to use from the huggingface library or GPT3")
     parser.add_argument("--LLM_sampling", type=str,default='systematic',help="sampling method for gpt2 models - systematic or multinomial")
-    parser.add_argument("--LLM_random_first", type=bool,default=True,help="mix the top p filtered logits at the first position by multinomial sampling")
+    parser.add_argument("--LLM_random_first", type=str_eval,default=True,help="mix the top p filtered logits at the first position by multinomial sampling")
     parser.add_argument("--LLM_random_all", type=str,default=True,help="mix the top p filtered logits at every position by multinomial sampling")
     parser.add_argument("--LLM_temperature", type=int,default=0.9,help="sampling temperature for systematic verse sampling")
     parser.add_argument("--trunkate_after", type=int,default=50,help="number of tries after which the search beam will be trunkated when sampling = systematic")
     parser.add_argument("--LLM_top_p", type=int,default=0.6,help="top p filter value used if sampling = systematic for the initial verse")
     parser.add_argument("--syllable_count_toll", type=int,default=0.65,help="precentage of the allowed difference between target syllables and delivered syllables by gpt_poet")
-    parser.add_argument("--dividable_rest", type=bool,default=True,help="if the number of pending syllables left by gpt_poet need to be devidable by the length of the target rythm")   # then bert would not need to find a different ending
-    parser.add_argument("--verse_stop_tokens", type=list,default=['\n','.'],help="list of tokens after which a verse could end (only applies when sampling = systematic)")
+    parser.add_argument("--dividable_rest", type=str_eval,default=True,help="if the number of pending syllables left by gpt_poet need to be devidable by the length of the target rythm")   # then bert would not need to find a different ending
+    parser.add_argument("--verse_stop_tokens", type=str_eval,default=['\n','.'],help="list of tokens after which a verse could end (only applies when sampling = systematic)")
     parser.add_argument("--verse_alpha_only_after", type=int,default=4,help="blocks non alphabetic tokens close to the verse ending which is calculated by num_syll*num_syll_toll-verse_alpha_only_after")
 
 
     parser.add_argument("--LLM_2", type=str,default=None,help="model to replace words with certain pos tags")
-    parser.add_argument("--LLM_2_pos", type=list,default=['NOUN','PROPN'],help="pos token of the words that should be replaced by the second language model")
+    parser.add_argument("--LLM_2_pos", type=str_eval,default=['NOUN','PROPN'],help="pos token of the words that should be replaced by the second language model")
     parser.add_argument("--LLM_2_sampling", type=str,default='systematic',help="sampling method for the second language model - systematic or multinomial")
-    parser.add_argument("--top_p_dict_replace", type=dict,default={0:0.8,1:0.4},help="top p dictionary used for the words replaced by the second model")
+    parser.add_argument("--top_p_dict_replace", type=str_eval,default={0:0.8,1:0.4},help="top p dictionary used for the words replaced by the second model")
 
     parser.add_argument("--LLM_rhyme", type=str,default=None,help="generative language model to use from the huggingface library or gpt3")
     parser.add_argument("--LLM_rhyme_sampling", type=str,default='systematic',help="sampling method for the rhyme model - systematic or multinomial")
-    parser.add_argument("--rhyme_temperature", type=int,default=1,help="sampling temperature for rhyming words sampling")
+    parser.add_argument("--rhyme_temperature", type=int,default=0.9,help="sampling temperature for rhyming words sampling")
     
-    parser.add_argument("--use_pos_rhyme_syns", type=bool,default=True,help="synonyms with the same pos tokens are allowed when looking for rhymes (only if sampling = systematic)")
-    parser.add_argument("--top_p_dict_rhyme", type=dict,default={0:0.65,2:0.5},help="top p dictionary used to find rhyming alternatives for a single word")
+    parser.add_argument("--use_pos_rhyme_syns", type=str_eval,default=True,help="synonyms with the same pos tokens are allowed when looking for rhymes (only if sampling = systematic)")
+    parser.add_argument("--top_p_dict_rhyme", type=str_eval,default={0:0.65,2:0.5},help="top p dictionary used to find rhyming alternatives for a single word")
     parser.add_argument("--top_p_rhyme", type=int,default=0.6,help="top p value used to find rhyming alternatives for longer sequences")
     parser.add_argument("--max_rhyme_dist", type=int,default=0.5,help="maximum siamese vector distances of two words in order to be considered rhyming")
-    parser.add_argument("--rhyme_stop_tokens", type=list,default=['\n','.'],help="list of tokens after which a verse could end (only applies when sampling = systematic)")  
+    parser.add_argument("--rhyme_stop_tokens", type=str_eval,default=['\n','.'],help="list of tokens after which a verse could end (only applies when sampling = systematic)")  
 
     parser.add_argument("--rhyme_scheme", type=str,default=None,help="rhyme scheme for the created poem")
-    parser.add_argument("--num_syll_list", type=list,default=None,help="list of the syllable count of each line; when more lines than items in the list are generated it iterates")
+    parser.add_argument("--num_syll_list", type=str_eval,default=None,help="list of the syllable count of each line; when more lines than items in the list are generated it iterates")
     parser.add_argument("--target_rythm", type=str,default=None,help="rythm of the poem: jambus or trochee")
-    parser.add_argument("--use_tts", type=bool,default=False,help="use also text to speech to fine-select the best rhyming pair")
-    parser.add_argument("--use_colone_phonetics", type=bool,default=False,help="if a rhyme is detected by using colone phonetics, prefer this one over sia rhyme/tts")
-    parser.add_argument("--allow_pos_match", type=bool,default=True,help="Ignores the end of an alternative verse ending if the pos tags match the original verse")
+    parser.add_argument("--use_tts", type=str_eval,default=True,help="use also text to speech to fine-select the best rhyming pair")
+    parser.add_argument("--use_colone_phonetics", type=str_eval,default=False,help="if a rhyme is detected by using colone phonetics, prefer this one over sia rhyme/tts")
+    parser.add_argument("--allow_pos_match", type=str_eval,default=True,help="Ignores the end of an alternative verse ending if the pos tags match the original verse")
 
-    parser.add_argument("--log_stdout", type=bool,default=True,help="if a rhyme is detected by using colone phonetics, prefer this one over sia rhyme/tts")
+    parser.add_argument("--log_stdout", type=str_eval,default=True,help="if a rhyme is detected by using colone phonetics, prefer this one over sia rhyme/tts")
     
     args = parser.parse_args()
 
@@ -460,8 +462,6 @@ def initialize_llms(args):
     elif LLM_perplexity.sampling != 'systematic':
         LLM_perplexity = LLM_class(LLM_perplexity.model_name,device=perplexity_device)
 
-    print('perp device')
-    print(LLM_perplexity.device)
 
     return LLM, LLM_perplexity, LLM_rhyme, LLM_2
 
@@ -520,7 +520,7 @@ if __name__ == "__main__":
             prompt = random.choice(prompts)
             
             if title_0:
-                title = 'titel: ' + title_0 + '\n'
+                title = 'titel: ' + title_0 + ':\n'
             else: 
                 title = ''
             args.prompt = prompt[0] + '\n' +title
@@ -530,17 +530,26 @@ if __name__ == "__main__":
             if not target_rythm_0:
                 args.target_rythm = prompt[2]
         else: 
-            if not prompt_0: 
-                args.prompt = 'titel: ' + args.title + '\n'
+            if not prompt_0 and title_0: 
+                args.prompt = 'titel: ' + args.title + ':\n'
+            elif title_0:
+                args.prompt = prompt_0 + '\ntitel: ' + args.title + ':\n'
+            else: args.prompt += '\n'
             
             if not num_syll_lst_0:
                 args.num_syll_list = [10,11]
             if not target_rythm_0:
                 args.target_rythm = jambus
             
+        print('parameters')
+        print('############## begin parameters ##############')
+        for arg in vars(args):
+            print(str(arg) + ': ' + str(getattr(args, arg)))
 
+        print('############## end of parameters ##############')
         print('LLM: ' + str(get_LLM_name(LLM)))
         print('LLM_rhyme: ' + str(get_LLM_name(LLM_rhyme)))
+        print('iterations per verse: ' + str(args.verse_versions))
 
         if LLM_2:
             print('LLM_2: ' + LLM_2.model_name)

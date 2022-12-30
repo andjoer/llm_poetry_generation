@@ -260,7 +260,7 @@ def gpt_poet(args,input_text, num_syll,title_accepted, LLM = None,LLM_2=None):
             print('generated part: ' + new_text)
         else:                                                           # gpt3 has a problem with continuing started lines; it would be necessary to block '\n'-token at the beginning 
             new_text = ''
-            num_syll_tollerance += 0.2
+            num_syll_tollerance -= 0.2
 
 
             
