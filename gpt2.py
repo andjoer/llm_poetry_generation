@@ -161,6 +161,7 @@ def get_input_text(verse,num_words_remove):
         input_text = ' '.join(input_text)
     else:
         input_text = ''
+        idx = 1
 
     return input_text,idx
 
@@ -238,7 +239,8 @@ def gpt_sample_systematic(verse,LLM,num_return_sequences = 100,loop_limit = 1000
     if stop_tokens_alpha:
         if '\n' in stop_tokens_alpha:          # fix for google colab; no explanation for the bug currently
             stop_tokens_alpha.remove('\n')
-            stop_tokens = [199]    
+            stop_tokens = [tokenizer.encode('a\n')[-1]]
+
         stop_tokens += [tokenizer.encode(stop_token)[0] for stop_token in stop_tokens_alpha]
  
         
@@ -262,7 +264,8 @@ def gpt_sample_systematic(verse,LLM,num_return_sequences = 100,loop_limit = 1000
     block_tokens_num = LLM.block_tokens_num
 
     # linebreak = tokenizer.encode('\n')[0]
-    linebreak = 199                       # due to colab issue
+    linebreak = tokenizer.encode('a\n')[-1]                    # due to colab issue
+
     sm = torch.nn.Softmax(dim = 1)
 
     

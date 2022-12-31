@@ -191,7 +191,7 @@ def find_rhyme(args,verse_lst,idx1,idx2,LLM_perplexity,last_stress = -2, LLM='',
         found = True
         print('found via colone phonetics')
 
-    '''if not found: 
+    if not found and args.rhyme_last_two_vowels: 
         for idx, word_pair in enumerate(word_pairs):
             word_1 = word_pair[0]
             word_2 = word_pair[1]
@@ -203,7 +203,7 @@ def find_rhyme(args,verse_lst,idx1,idx2,LLM_perplexity,last_stress = -2, LLM='',
                     causal_selection = sent_pairs[idx][1]
                     found = True
             
-                    break'''
+                    break
 
     if found: 
         print('found via vowels or colone phonetics:')
@@ -212,7 +212,7 @@ def find_rhyme(args,verse_lst,idx1,idx2,LLM_perplexity,last_stress = -2, LLM='',
         print(causal_selection)
 
 
-    if not found and args.rhyme_last_two_vowels:
+    '''if not found:
         for word_pair in word_pairs:
             word_1 = word_pair[0]
             word_2 = word_pair[1]
@@ -233,7 +233,7 @@ def find_rhyme(args,verse_lst,idx1,idx2,LLM_perplexity,last_stress = -2, LLM='',
             bi_selection = sent_pairs[best_idx][0] #pairs[best_idx][0]
             causal_selection = sent_pairs[best_idx][1]
             found = True
-            print('found via colone phonetics round 2')
+            print('found via colone phonetics round 2')'''
 
 
     

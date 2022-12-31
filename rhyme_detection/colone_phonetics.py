@@ -123,7 +123,6 @@ def compare_last_vowels(word_1,word_2):
     vowels_2,last_2 = get_last_two_vowels(word_2)
     
     if vowels_1 == vowels_2 and last_1 == last_2 and vowels_1 and word_1 != word_2:
-        diff = 0
         print('matching vowels')
 
         return True
