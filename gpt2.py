@@ -80,7 +80,9 @@ def gpt2(input_text,LLM, max_length= 10, num_return_sequences=5,stop=['\n'],repe
     
     #return [item['generated_text'] for item in generated]
     if block_linebreak:
-        return [' ' + LLM.tokenizer.decode(item[input_ids.size(1):], skip_special_tokens=True) for item in generated if item[input_ids.size(1)] != 199]
+        linebreak = LLM.tokenizer.encode('a\n')[-1]                    # due to colab issue
+
+        return [' ' + LLM.tokenizer.decode(item[input_ids.size(1):], skip_special_tokens=True) for item in generated if item[input_ids.size(1)] != linebreak]
     else: 
         return [' ' + LLM.tokenizer.decode(item[input_ids.size(1):], skip_special_tokens=True) for item in generated]
 

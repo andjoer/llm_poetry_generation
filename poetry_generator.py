@@ -311,10 +311,13 @@ def parse_arguments():
     parser.add_argument("--prompt", type=str,default=None,help="initial input prompt")
     parser.add_argument("--title", type=str,default='Die Regierung',help="title of the poem") 
     parser.add_argument("--generated_lines", type=int,default=8,help="number of lines that will be generated")
+    parser.add_argument("--generated_poems", type=int,default=1000,help="number of poems that will be generated")
+
     parser.add_argument("--verse_versions", type=int,default=1,help="number of versions for one verse will be generated; the one with lowest perplexity will be chosen")
     parser.add_argument("--check_end", type=str_eval,default=True,help="append '.' after verse to check perplexity") # experimental, might help to avoid invalid end of verses
     parser.add_argument("--invalid_verse_ends", type=str_eval,default=['CONJ','CCONJ'],help="pos tokens that should not appear at the end of a verse")
     parser.add_argument("--repetition_penalty", type=int,default=1.2,help="repetition penalty according to CTRL paper")
+
 
     parser.add_argument("--LLM", type=str,default='Anjoe/german-poetry-gpt2-large',help="generative language model to use from the huggingface library or GPT3")
     parser.add_argument("--LLM_sampling", type=str,default='systematic',help="sampling method for gpt2 models - systematic or multinomial")
@@ -333,8 +336,8 @@ def parse_arguments():
     parser.add_argument("--LLM_2_pos", type=str_eval,default=['NOUN','PROPN','VERB'],help="pos token of the words that should be replaced by the second language model")
     parser.add_argument("--LLM_2_sampling", type=str,default='systematic',help="sampling method for the second language model - systematic or multinomial")
     parser.add_argument("--LLM_2_temperature", type=int,default=0.9,help="temperature for the second LLM")
-    parser.add_argument("--LLM_2_top_p", type=int,default=0.9,help="top p for the second LLM when the sampling is multinomial")
-    parser.add_argument("--top_p_dict_replace", type=str_eval,default={0:0.65,1:0.4},help="top p dictionary used for the words replaced by the second model")
+    parser.add_argument("--LLM_2_top_p", type=int,default=0.6,help="top p for the second LLM when the sampling is multinomial")
+    parser.add_argument("--top_p_dict_replace", type=str_eval,default={0:0.55,1:0.4},help="top p dictionary used for the words replaced by the second model")
 
     parser.add_argument("--LLM_rhyme", type=str,default=None,help="generative language model to use from the huggingface library or gpt3")
     parser.add_argument("--LLM_rhyme_sampling", type=str,default='systematic',help="sampling method for the rhyme model - systematic or multinomial")
@@ -531,7 +534,7 @@ if __name__ == "__main__":
 
     LLM, LLM_perplexity, LLM_rhyme, LLM_2 = initialize_llms(args)
 
-    for i in range(1000):  
+    for i in range(args.generated_poems):  
         rhyme_schemes = ['aabb','abba','abab','']              # rhyme schemes to sample from
 
         args.prompt = prompt_0
