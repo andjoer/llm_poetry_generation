@@ -307,7 +307,8 @@ def gpt_sample_systematic(verse,LLM,num_return_sequences = 100,loop_limit = 1000
                     new_tokens =  torch.reshape(torch.IntTensor([tokens[-1] for tokens in possible_tokens]),(1,-1))
               
                 except: 
-
+                    print('possible tokens')
+                    print(possible_tokens)
                     raise Exception
                 input_tokens = torch.cat((inputs,new_tokens),1)
 
@@ -371,9 +372,10 @@ def gpt_sample_systematic(verse,LLM,num_return_sequences = 100,loop_limit = 1000
                     pos_match_end = True
                 else: 
                     pos_match_end = False
-
-                if invalid_verse_ends and generated_verse.token_pos in invalid_verse_ends:
-                    possible_end = False
+                if generated_verse.token_pos:
+                    if invalid_verse_ends and generated_verse.token_pos[-1] in invalid_verse_ends:
+                        possible_end = False
+                else: possible_end = False
 
                 if num_syll:
                     if len(generated_verse.rythm) < num_syll*num_syll_tollerance:
@@ -502,6 +504,9 @@ def gpt_sample_systematic(verse,LLM,num_return_sequences = 100,loop_limit = 1000
                 possible_logits.append(list(logits_filtered))
             else:
                 possible_tokens, possible_logits = remove_last(possible_tokens, possible_logits,tokenizer,max_word_count)
+
+            if not possible_tokens:
+                break
 
             if not possible_tokens[0]:
                 break

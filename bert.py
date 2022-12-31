@@ -92,7 +92,8 @@ def get_synonyms_cand(verse,tok_id,target_rythms, LLM_perplexity, adaptive=False
                 doc = nlp(text_pred)
                 tok_id = [token.i for token in doc if token.text == word and abs(token.i - mask_idx) < 3][0]
                 # rythm = get_rythm(word)
-                rythm,_,_ = hyphenate_ipa(word)
+                #rythm,_,_ = hyphenate_ipa(word)
+                rythm = verse_cl(word).rythm
                 proceed = True
                 if verse_end:
                     if doc[tok_id].pos_ in no_verse_end:
@@ -101,14 +102,14 @@ def get_synonyms_cand(verse,tok_id,target_rythms, LLM_perplexity, adaptive=False
                 if ((doc[tok_id].pos_ == token_pos and doc[tok_id].morph == morphology) or i > 0 or after) and proceed:   # the second loop is in case spacy detected for example a propn instead of an adv
                                                                                                             # check if the candidate has the same grammatical properties
                     
-                    if list(rythm ) == [0.5]:
-
+                    '''if list(rythm ) == [0.5]:
+    
                         if doc[tok_id].pos_ in stressed_list: 
                             if not (doc[tok_id].dep_ == 'mo' and len(doc[tok_id].text)<3):
                                 rythm = [1]
 
                         if doc[tok_id].pos_ in unstressed_list:
-                            rythm = [0]
+                            rythm = [0]'''
 
                     if target_rythms:
                        

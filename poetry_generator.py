@@ -1,11 +1,10 @@
 
-import os
 import glob
 import re
 import numpy as np 
 from rhyme import find_rhyme
 from rythm import fix_rythm, verse_cl
-import copy 
+
 import argparse, ast
 
 from gpt2 import LLM_class
@@ -17,8 +16,6 @@ import torch
 
 import sys
 
-from transformers import pipeline
-from transformers import GPT2Tokenizer, GPT2LMHeadModel
 
 
 ######################################
@@ -333,11 +330,11 @@ def parse_arguments():
 
 
     parser.add_argument("--LLM_2", type=str,default=None,help="model to replace words with certain pos tags")
-    parser.add_argument("--LLM_2_pos", type=str_eval,default=['NOUN','PROPN'],help="pos token of the words that should be replaced by the second language model")
+    parser.add_argument("--LLM_2_pos", type=str_eval,default=['NOUN','PROPN','VERB'],help="pos token of the words that should be replaced by the second language model")
     parser.add_argument("--LLM_2_sampling", type=str,default='systematic',help="sampling method for the second language model - systematic or multinomial")
     parser.add_argument("--LLM_2_temperature", type=int,default=0.9,help="temperature for the second LLM")
-    parser.add_argument("--LLM_2_top_p", type=int,default=0.8,help="top p for the second LLM when the sampling is multinomial")
-    parser.add_argument("--top_p_dict_replace", type=str_eval,default={0:0.8,1:0.4},help="top p dictionary used for the words replaced by the second model")
+    parser.add_argument("--LLM_2_top_p", type=int,default=0.9,help="top p for the second LLM when the sampling is multinomial")
+    parser.add_argument("--top_p_dict_replace", type=str_eval,default={0:0.65,1:0.4},help="top p dictionary used for the words replaced by the second model")
 
     parser.add_argument("--LLM_rhyme", type=str,default=None,help="generative language model to use from the huggingface library or gpt3")
     parser.add_argument("--LLM_rhyme_sampling", type=str,default='systematic',help="sampling method for the rhyme model - systematic or multinomial")
@@ -353,7 +350,9 @@ def parse_arguments():
     parser.add_argument("--num_syll_list", type=str_eval,default=None,help="list of the syllable count of each line; when more lines than items in the list are generated it iterates")
     parser.add_argument("--target_rythm", type=str,default=None,help="rythm of the poem: jambus or trochee")
     parser.add_argument("--use_tts", type=str_eval,default=True,help="use also text to speech to fine-select the best rhyming pair")
+    parser.add_argument("--size_tts_sample", type=int,default=10,help="number of best candidats forwarded by sia rhyme to the tts algorithm")
     parser.add_argument("--use_colone_phonetics", type=str_eval,default=False,help="if a rhyme is detected by using colone phonetics, prefer this one over sia rhyme/tts")
+    parser.add_argument("--rhyme_last_two_vowels", type=str_eval,default=False,help="if a rhyme is not detected by colone phonetics but has the last two vowels in common it is considered a rhyme and prefered over sia rhyme/tts")
     parser.add_argument("--allow_pos_match", type=str_eval,default=True,help="Ignores the end of an alternative verse ending if the pos tags match the original verse")
 
     parser.add_argument("--log_stdout", type=str_eval,default=True,help="if a rhyme is detected by using colone phonetics, prefer this one over sia rhyme/tts")
@@ -361,7 +360,7 @@ def parse_arguments():
     args = parser.parse_args()
 
 
-    #LLM dependent defaults
+    
 
     if not args.max_rhyme_dist:
         if not args.use_tts:
@@ -369,10 +368,11 @@ def parse_arguments():
         else: 
             args.max_rhyme_dist = 0.6
 
+    #LLM dependent defaults
     if not (args.LLM_rhyme or args.LLM_2): 
         if len(args.LLM) <= 5:                                        # API
-            args.top_p_rhyme = 1
             args.LLM_rhyme = args.LLM
+            args.LLM_rhyme_sampling = 'multinomial'
         elif args.LLM_rhyme_sampling != 'systematic':
             args.top_p_rhyme = 1 
         else: 
@@ -384,7 +384,7 @@ def parse_arguments():
     if args.LLM_sampling == 'multinomial' and not args.LLM_top_p:
         args.LLM_top_p = 1
     elif args.LLM_sampling != 'multinomial' and not args.LLM_top_p:
-        args.LLM_top_p = 0.6
+        args.LLM_top_p = 0.4
 
 
     return args

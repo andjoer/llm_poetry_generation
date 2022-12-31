@@ -118,6 +118,7 @@ def reverse_vocal_shortage_shwa(word,ipa):
     return reverse_vocal_shortage(word,ipa,regex_vowel_letter,regex_letter,regex_ipa_letter, regex_ipa_vowel_letter )
 
 def hyphenate_ipa(word):
+    word = re.sub('[ß]', 's', word)
     word = re.sub('[^A-Za-zäöüÄÖÜ]', '', word)
     ipa = clean_ipa(convert_to_ipa(word.lower()))
     
@@ -257,7 +258,7 @@ def hyphenate_ipa(word):
 
 if __name__ == "__main__":  
 
-    word = 'große'
+    word = 'füße'
     word = re.sub('[ß]', 's', word)
     word = re.sub('[^A-Za-zäöüÄÖÜ]', '', word)
     stress_lst, ipa, syllables = hyphenate_ipa(word)

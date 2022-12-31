@@ -126,6 +126,7 @@ def gpt_poet(args,input_text, num_syll,title_accepted, LLM = None,LLM_2=None):
             input_text_new = input_text[-len_past:]
             input_text_title = input_text[-len_past:] 
             last_replaced = 0
+            block_linebreak = False
             
         if cnt > 9:                                     # if there are more then 10 tries, stop the complete poem
             return '**'
@@ -158,7 +159,7 @@ def gpt_poet(args,input_text, num_syll,title_accepted, LLM = None,LLM_2=None):
 
         else:
 
-            generated = LLM_poet(input_text_new, LLM, max_length= 20,num_return_sequences=20,repetition_penalty = repetition_penalty,top_p = top_p,temperature = temperature) # generate from the prompt
+            generated = LLM_poet(input_text_new, LLM, max_length= 20,num_return_sequences=20,repetition_penalty = repetition_penalty,top_p = top_p,temperature = temperature,block_linebreak=block_linebreak) # generate from the prompt
 
 
         candidates_ends = []
@@ -261,7 +262,10 @@ def gpt_poet(args,input_text, num_syll,title_accepted, LLM = None,LLM_2=None):
             #last_token_idx = len(candidates[best_idx].rythm_tokens)-1
             input_text_new = input_text_title + new_text 
             print('generated part: ' + new_text)
+            block_linebreak = True
+        
         else:                                                           # gpt3 has a problem with continuing started lines; it would be necessary to block '\n'-token at the beginning 
+            block_linebreak = False
             new_text = ''
             num_syll_tollerance -= 0.2
 

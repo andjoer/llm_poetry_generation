@@ -20,6 +20,7 @@ from bert import get_synonym
 from perplexity import perplexity
 
 
+
 nlp = spacy.load("de_core_news_lg")
 
 
@@ -331,7 +332,7 @@ def extend_verse(verse,target_rythm,target_len,LLM_perplexity): # extend the ver
         ###################################
 
         tok_tar_rythms = [target_rythm_ext[verse.token_starts[token_idx]:verse.token_starts[token_idx]+(target_len - len(verse.rythm))]]
-        fill_word_3, _, _ = get_synonym(verse,token_idx-1,tok_tar_rythms,LLM_perplexity,after=True,verbose = True)
+        fill_word_3, perp_2a, _ = get_synonym(verse,token_idx-1,tok_tar_rythms,LLM_perplexity,after=True,verbose = True)
         text = text[:token_idx] + [fill_word_3] + text[token_idx:]
         verse_tmp = verse_cl(' '.join(text))
 
@@ -339,19 +340,21 @@ def extend_verse(verse,target_rythm,target_len,LLM_perplexity): # extend the ver
             token_tmp_idx = verse_tmp.doc[-1].i
         else: token_tmp_idx = verse_tmp.doc[-2].i
 
-        tok_tar_rythms = [target_rythm_ext[verse_tmp.token_starts[token_idx]:verse_tmp.token_ends[token_idx]]]
-        fill_word_4, perp_2, _ = get_synonym(verse_tmp,token_tmp_idx,tok_tar_rythms,LLM_perplexity,verbose = True,verse_end=True)   # when the word before the last word is replaced, the last stress could be wrong
+        #tok_tar_rythms = [target_rythm_ext[verse_tmp.token_starts[token_tmp_idx]:verse_tmp.token_ends[token_tmp_idx]]]
+
+        #fill_word_4, perp_2, _ = get_synonym(verse_tmp,token_tmp_idx,tok_tar_rythms,LLM_perplexity,verbose = True,verse_end=True)   
         
-        
-        if perp_1 < min(perp_2,perp_3):
+        '''elif perp_2 < perp_3: 
+
+            text = str(verse.doc).split()[:token_idx] + [fill_word_3 ]+ [fill_word_4] + sign'''
+        if perp_1 < min(perp_2a,perp_3):
 
             text = str(verse.doc).split()[:token_idx] + [fill_word_1] + sign
         
-        elif perp_2 < perp_3: 
+        else: #  perp_2a < perp_3: 
+            text = str(verse.doc).split()[:token_idx] + [fill_word_3 ]+ [str(verse.doc).split()[token_idx]] + sign
 
-            text = str(verse.doc).split()[:token_idx] + [fill_word_3 ]+ [fill_word_4] + sign
-
-        else: text = str(verse.doc).split()[:token_idx+1] +[fill_word_5] + sign
+        #else: text = str(verse.doc).split()[:token_idx+1] +[fill_word_5] + sign
 
         #verse.text = ' '.join(text)
         verse = verse_cl(text)  
@@ -787,13 +790,21 @@ def remove_token(verse,num_remove):
     print(num_syllabs_lst)
     print(num_remove)
     all_comb = []
+
+    num_remove_0 = num_remove
+    subtract = True
     while not all_comb:
 
         all_comb_idx = []
     
         all_comb_idx = get_all_comb(num_syllabs_lst,num_remove)
-        num_remove -= 1
-    
+        if subtract:
+            num_remove -= 1
+        else: 
+            num_remove += 1 
+        if num_remove < 1:
+            num_remove = num_remove_0
+            subtract = False
         all_comb = []
         intersect_arr = np.asarray(list(intersect_dict))
         for idx in all_comb_idx:
@@ -850,26 +861,28 @@ def fix_rythm(verse,target_rythm,num_syllabs,LLM_perplexity):
 
 
    
-
+    count = 0
     while (len(verse.rythm) > num_syllabs) or difference > 0: # while the metrum ist not correct
         print(target_rythm)
         print(num_syllabs)
         print(verse.text)
         print(verse.rythm)
 
-        num_rm = len(verse.rythm) - num_syllabs+2               # number of syllables to remove
-        if num_rm == num_rm_0:                                      #avoiding infinite loops of adding and removing
+        num_rm = len(verse.rythm) - num_syllabs              # number of syllables to remove
+        if num_rm == num_rm_0 and count > 0:                                      #avoiding infinite loops of adding and removing
             num_rm += 1
         print(num_rm)
         if num_rm > 0:
             print('shortening')
             combs = remove_token(verse,num_rm)                    # get possible combinations of words that could be removed
-            verse = find_opt_rythm(verse,combs,target_rythm,LLM_perplexity)      # find the metrically best option
+            if combs: 
+                verse = find_opt_rythm(verse,combs,target_rythm,LLM_perplexity)      # find the metrically best option
         verse = fix_shifted_rythm(verse,target_rythm, LLM_perplexity, target_len = num_syllabs)    # correct metrically incorrect syllables
         print(verse.text)
         difference = compare_verse_rythm(verse,target_rythm)
         num_rm_0 = num_rm
         print(difference)
+        count += 1
 
    
 
@@ -923,3 +936,12 @@ def check_rythm(vers, rythm_reff, last = None, num_stress = None):
     # verse = verse_cl(sentence, rythm_reff, rythm_raw)
 
     return diff, vers
+
+if __name__ == "__main__": 
+    from gpt2 import LLM_class
+    LLM_perplexity = LLM_class('Anjoe/german-poetry-gpt2-large')
+    test_verse = verse_cl('Wer hatte ihm den weißen Stock gegeben')
+    test_verse_2 = verse_cl('Der Begriff Poesie umfasste in der Antike und frühen Neuzeit die Werke in gebundener Sprache, während im Mittelalter nur die quantitierende Dichtung in antiker Tradition als poesis bezeichnet wurde') #wikipedia DE Poesie
+    new_verse = fix_rythm(test_verse_2,[0,1],10,LLM_perplexity)
+    print(new_verse.text)
+    print(new_verse.rythm_tokens)
