@@ -6,9 +6,9 @@ from scipy import spatial
 #import spacy
 #nlp = spacy.load("de_core_news_lg")
 
-with open('spacy_data/conj_adv_vec.lst', 'rb') as f:
+'''with open('spacy_data/conj_adv_vec.lst', 'rb') as f:
    conj_adv_vecs = pickle.load(f)
- 
+ '''
 
 def get_childs_idx(token):
     

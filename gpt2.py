@@ -155,8 +155,11 @@ def get_input_text(verse,num_words_remove):
         idx_out = 0
         idx = 1
         while idx_out < num_words_remove :
-            if len(clean_word(verse.text[-idx])) > 1:
-                idx_out += 1
+            try:
+                if len(clean_word(verse.text[-idx])) > 1:
+                    idx_out += 1
+            except: 
+                return '', 1
             idx += 1
         idx -= 1
         input_text = verse.text[:-idx]
@@ -336,7 +339,12 @@ def gpt_sample_systematic(verse,LLM,num_return_sequences = 100,loop_limit = 1000
             logits[:,block_tokens_num] = -float('inf')
             
             #repetition panelty
-            for previous_token in set(input_tokens[0].tolist()):
+            input_token_penalty_lst = input_tokens[0].tolist()
+            try:
+                input_token_penalty_lst.remove(linebreak)
+            except: 
+                pass
+            for previous_token in set(input_token_penalty_lst):
                 # if score < 0 then repetition penalty has to multiplied to reduce the previous token probability
                 if logits[:, previous_token] < 0:
                     logits[:, previous_token] *= repetition_penalty
