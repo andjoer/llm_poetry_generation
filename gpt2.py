@@ -203,6 +203,11 @@ def gpt_sample_systematic(verse,LLM,num_return_sequences = 100,loop_limit = 1000
                         top_p_dict = {},pos=False,check_rythm = True, target_rythm = [],num_syll = None,num_syll_tollerance = 1,last_stress = None, trunkate_after = 100,pos_alternative = False,factor_stop_token=0.2,bigram_limit=2, trigram_limit = 1,
                         dividable_rest=False, only_alpha_after = 3,allow_pos_match=False,repetition_penalty=1.2,invalid_verse_ends = [],return_last_state = False,last_state = None):
 
+    '''
+    builds a stack of possible tokens and filtered by a specific top_p values and goes through all of them
+    
+    '''
+
  
     if num_words_remove and type(verse) != str:
         input_text, idx = get_input_text(verse,num_words_remove)

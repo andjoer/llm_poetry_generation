@@ -49,17 +49,17 @@ def get_synonyms_cand(args,verse,tok_id,target_rythms, LLM_perplexity, adaptive=
             if token.i != tok_id:
                 text += token.text + ' '
             elif token.i == tok_id and not after:
-                text+= '[MASK] '
+                text+= args.mask_tok + ' '
                 token_pos = token.pos_          
                 morphology = token.morph
                 
             else:
-                text += token.text + ' [MASK] '
+                text += token.text + ' '+args.mask_tok+' '
                 token_pos = None          # just to avoid a nested if
                 morphology = None
 
     else:
-        text = '[MASK] ' + str(verse.doc)
+        text = args.mask_tok + ' ' + str(verse.doc)
         token_pos = None
         morphology = None
 
@@ -82,7 +82,7 @@ def get_synonyms_cand(args,verse,tok_id,target_rythms, LLM_perplexity, adaptive=
             
             chunks= text.split()
             
-            mask_idx = chunks.index('[MASK]')
+            mask_idx = chunks.index(args.mask_tok)
 
             chunks[mask_idx] = word
             text_pred = ' '.join(chunks)
@@ -139,6 +139,7 @@ def get_synonym(args,verse,tok_id,target_rythms,LLM_perplexity, adaptive = False
 
     perp_0 = perplexity(' '.join(str(verse.doc).split()),LLM_perplexity)
 
+
     candidates, candidates_perp, found_correct = get_synonyms_cand(args,verse,tok_id,target_rythms,LLM_perplexity, adaptive=adaptive,after=after,verse_end = verse_end)
   
     if candidates:
@@ -161,7 +162,13 @@ def get_synonym(args,verse,tok_id,target_rythms,LLM_perplexity, adaptive = False
 
 def bidirectional_synonyms_single(args,verse,last_idx,context_aft, target, LLM_perplexity, num_out = 100):
 
-    unmasker_rhyme = pipeline('fill-mask', model = args.bidirectional_model, top_k = num_out,framework='pt')
+    text = ''
+    if torch.cuda.device_count() > 0:
+        device = 0
+    else: 
+        device = -1
+
+    unmasker_rhyme = pipeline('fill-mask', model = args.bidirectional_model, top_k = num_out,framework='pt',device=device)
 
     input_text = verse.text[:last_idx]
     
@@ -171,7 +178,9 @@ def bidirectional_synonyms_single(args,verse,last_idx,context_aft, target, LLM_p
     #target_rythm_ext = np.asarray(extend_target_rythm(verse.rythm,target_rythm))
     input_text = ' '.join(input_text)
 
-    text = verse.context[-100:] + '[SOV]' + input_text + '[MASK]' + ' [EOV]' + context_aft
+    #text = verse.context[-100:] + '[SOV]' + input_text + '[MASK]' + ' [EOV]' + context_aft
+
+    text = verse.context[-100:] +  input_text + args.mask_tok +  context_aft
     gpt2_text_1 = verse.context[-100:] + ' ' + input_text
     gpt2_text_2 = '\n' + context_aft
 

@@ -1,4 +1,4 @@
-
+from transformers import AutoTokenizer
 import argparse, ast
 
 from gpt2 import LLM_class
@@ -68,6 +68,10 @@ def parse_arguments():
     parser.add_argument("--log_stdout", type=str_eval,default=True,help="if a rhyme is detected by using colone phonetics, prefer this one over sia rhyme/tts")
     
     args = parser.parse_args()
+
+
+    bi_tokenizer = AutoTokenizer.from_pretrained(args.bidirectional_model)
+    args.mask_tok = str(bi_tokenizer.mask_token)
 
     if not args.max_rhyme_dist:
         if not args.use_tts:
