@@ -28,7 +28,7 @@ nlp = spacy.load("de_core_news_lg")
 jambus = [0,1]
 
 
-def token_compliance(verse, target_rythm):   # check if a word could theoretically have the correct rythm
+'''def token_compliance(verse, target_rythm):   # check if a word could theoretically have the correct rythm   -> depreciated
     if len(target_rythm )== 2:
         target_rythms = [[0,1],[1,0]]
     else:
@@ -40,7 +40,7 @@ def token_compliance(verse, target_rythm):   # check if a word could theoretical
             
             rythm = verse.rythm_tokens[token.i]
             if not rythm_comp_adaptive(rythm,target_rythms,adaptive=True):
-                text_tokens.append(get_synonym(verse,token.i,target_rythms,adaptive=True))
+                text_tokens.append(get_synonym(args,verse,token.i,target_rythms,adaptive=True))
 
             else: 
                 text_tokens.append(token.text)
@@ -49,10 +49,10 @@ def token_compliance(verse, target_rythm):   # check if a word could theoretical
 
 
     
-    verse.update(text_tokens)
+    verse.update(text_tokens)''' 
 
 
-def get_synonyms_shift(verse,token_idx,target_rythm_ext,shift,LLM_perplexity,force_correct = False):
+def get_synonyms_shift(args,verse,token_idx,target_rythm_ext,shift,LLM_perplexity,force_correct = False):
     perplexities = []
     synonyms = []
     found_correct_lst = []
@@ -64,14 +64,14 @@ def get_synonyms_shift(verse,token_idx,target_rythm_ext,shift,LLM_perplexity,for
 
         tok_tar_rythms = [target_rythm_ext[verse.token_starts[token_idx]:verse.token_ends[token_idx]+shift_]]
         
-        synonym, perp,found_correct = get_synonym(verse,token_idx,tok_tar_rythms,LLM_perplexity,verbose = True)
+        synonym, perp,found_correct = get_synonym(args,verse,token_idx,tok_tar_rythms,LLM_perplexity,verbose = True)
         perplexities.append(perp)
         synonyms.append(synonym)
         found_correct_lst.append(found_correct)
 
     return synonyms, perplexities, found_correct_lst
 
-def fix_shifted_rythm(verse,target_rythm,LLM_perplexity, len_window = 6,target_len = 10):
+def fix_shifted_rythm(args,verse,target_rythm,LLM_perplexity, len_window = 6,target_len = 10):
     offset = 0
 
     print('start_fixing')
@@ -108,7 +108,7 @@ def fix_shifted_rythm(verse,target_rythm,LLM_perplexity, len_window = 6,target_l
 
             tok_tar_rythms.append(target_rythm_ext[verse.token_starts[token_idx]:verse.token_ends[token_idx]+best_shift])
 
-            synonym = get_synonym(verse,token_idx,tok_tar_rythms,LLM_perplexity)
+            synonym = get_synonym(args,verse,token_idx,tok_tar_rythms,LLM_perplexity)
             text[token_idx] = synonym
 
         else:
@@ -129,7 +129,7 @@ def fix_shifted_rythm(verse,target_rythm,LLM_perplexity, len_window = 6,target_l
                 
                         tok_tar_rythms = [target_rythm_ext[verse.token_starts[previous_idx]:verse.token_ends[previous_idx]-1]]
 
-                        synonym = get_synonym(verse,token_idx -1,tok_tar_rythms,LLM_perplexity)
+                        synonym = get_synonym(args,verse,token_idx -1,tok_tar_rythms,LLM_perplexity)
                         synonyms.append([synonym])
                         text_tmp = text.copy()
                         text_tmp[token_idx] = synonym
@@ -138,7 +138,7 @@ def fix_shifted_rythm(verse,target_rythm,LLM_perplexity, len_window = 6,target_l
 
                         tok_tar_rythms = [target_rythm_ext[verse.token_starts[token_idx]-1:verse.token_ends[token_idx]]]
 
-                        synonym, perp,_ = get_synonym(verse_tmp,token_idx,tok_tar_rythms,LLM_perplexity,verbose = True)
+                        synonym, perp,_ = get_synonym(args,verse_tmp,token_idx,tok_tar_rythms,LLM_perplexity,verbose = True)
                         perplexities.append(perp)
 
                         synonyms[-1] += [synonym]
@@ -153,7 +153,7 @@ def fix_shifted_rythm(verse,target_rythm,LLM_perplexity, len_window = 6,target_l
                         
                         tok_tar_rythms = [target_rythm_ext[verse.token_starts[previous_idx]:verse.token_ends[previous_idx]+1]]
 
-                        synonym = get_synonym(verse,previous_idx,tok_tar_rythms,LLM_perplexity)
+                        synonym = get_synonym(args,verse,previous_idx,tok_tar_rythms,LLM_perplexity)
                         if synonym:
                             synonyms.append([synonym])
                             text_tmp = text.copy()
@@ -163,7 +163,7 @@ def fix_shifted_rythm(verse,target_rythm,LLM_perplexity, len_window = 6,target_l
 
                             tok_tar_rythms = [target_rythm_ext[verse.token_starts[token_idx]+1:verse.token_ends[token_idx]]]
 
-                            synonym, perp, _ = get_synonym(verse_tmp,token_idx,tok_tar_rythms,LLM_perplexity,verbose = True)
+                            synonym, perp, _ = get_synonym(args,verse_tmp,token_idx,tok_tar_rythms,LLM_perplexity,verbose = True)
                             perplexities.append(perp)
 
                             synonyms[-1] += [synonym]
@@ -177,14 +177,14 @@ def fix_shifted_rythm(verse,target_rythm,LLM_perplexity, len_window = 6,target_l
                     tok_tar_rythms = [target_rythm_ext[verse.token_starts[token_idx]:verse.token_starts[token_idx]+1]]
                     print('tok tar rythms')
                     print(tok_tar_rythms)
-                    synonym,perp,_ = get_synonym(verse,previous_idx,tok_tar_rythms,LLM_perplexity,after=True,verbose = True)
+                    synonym,perp,_ = get_synonym(args,verse,previous_idx,tok_tar_rythms,LLM_perplexity,after=True,verbose = True)
                     synonyms.append([synonym])
                     perplexities.append(perp)
 
                     tok_tar_rythms = [target_rythm_ext[verse.token_starts[token_idx]:verse.token_starts[token_idx]+3]]
                     print(tok_tar_rythms)
 
-                    synonym, perp, _ = get_synonym(verse,token_idx,tok_tar_rythms,LLM_perplexity,verbose = True)
+                    synonym, perp, _ = get_synonym(args,verse,token_idx,tok_tar_rythms,LLM_perplexity,verbose = True)
                     perplexities.append(perp)
 
                     synonyms.append([synonym])
@@ -202,7 +202,7 @@ def fix_shifted_rythm(verse,target_rythm,LLM_perplexity, len_window = 6,target_l
                 synonyms_idx = []
 
                 if not extend:
-                    synonyms_tmp, perp_tmp,found_correct = get_synonyms_shift(verse,token_idx,target_rythm_ext,best_shift,LLM_perplexity)
+                    synonyms_tmp, perp_tmp,found_correct = get_synonyms_shift(args,verse,token_idx,target_rythm_ext,best_shift,LLM_perplexity)
                     synonyms += synonyms_tmp
                     perplexities += perp_tmp
                     found_correct_lst += found_correct
@@ -210,7 +210,7 @@ def fix_shifted_rythm(verse,target_rythm,LLM_perplexity, len_window = 6,target_l
         
             
                     if token_idx > 0:
-                        synonyms_tmp, perp_tmp, found_correct = get_synonyms_shift(verse,previous_idx,target_rythm_ext,best_shift,LLM_perplexity)
+                        synonyms_tmp, perp_tmp, found_correct = get_synonyms_shift(args,verse,previous_idx,target_rythm_ext,best_shift,LLM_perplexity)
                         synonyms += synonyms_tmp
                         perplexities += perp_tmp
                         synonyms_idx += [1]*len(synonyms_tmp)
@@ -221,7 +221,7 @@ def fix_shifted_rythm(verse,target_rythm,LLM_perplexity, len_window = 6,target_l
                 if not tok_tar_rythms[0]:
                     tok_tar_rythms = [target_rythm[:best_shift]]
     
-                synonym,perp,_ = get_synonym(verse,previous_idx,tok_tar_rythms,LLM_perplexity,after=True,verbose = True)
+                synonym,perp,_ = get_synonym(args,verse,previous_idx,tok_tar_rythms,LLM_perplexity,after=True,verbose = True)
                 synonyms.append(synonym)
                 perplexities.append(perp)
                 synonyms_idx += [2]
@@ -265,7 +265,7 @@ def fix_shifted_rythm(verse,target_rythm,LLM_perplexity, len_window = 6,target_l
 
     return verse
 
-def extend_verse(verse,target_rythm,target_len,LLM_perplexity): # extend the verse
+def extend_verse(args,verse,target_rythm,target_len,LLM_perplexity): # extend the verse
 
     while len(verse.rythm) <= (target_len-len(target_rythm)):                   # if len(rythm) is larger then target_len minus length of the target rythm no word with rythm = target_rythm would fit in                
         target_rythm_ext = extend_target_rythm(verse.rythm,target_rythm)
@@ -278,7 +278,7 @@ def extend_verse(verse,target_rythm,target_len,LLM_perplexity): # extend the ver
         for token_idx, token in enumerate(verse.doc[:cut]):  # for every token try to fill a word in front of it
     
             tok_tar_rythms = [target_rythm_ext[verse.token_starts[token_idx]:verse.token_starts[token_idx]+len(target_rythm)]] # only words with rythms % target rythm == 0 don't mess up the rythm. For simplicity only words with rythm == target_rythm are considered
-            fill_word, perp, _ =  get_synonym(verse,token_idx-1,tok_tar_rythms,LLM_perplexity,after=True,verbose = True) # also get the perplexities
+            fill_word, perp, _ =  get_synonym(args,verse,token_idx-1,tok_tar_rythms,LLM_perplexity,after=True,verbose = True) # also get the perplexities
             fill_words.append(fill_word)
             perplexities.append(perp)
             text.append(token.text)
@@ -316,7 +316,7 @@ def extend_verse(verse,target_rythm,target_len,LLM_perplexity): # extend the ver
 
         tok_tar_rythms = [target_rythm_ext[verse.token_starts[token_idx]:]]
 
-        fill_word_1, perp_1, found_correct = get_synonym(verse,token_idx,tok_tar_rythms,LLM_perplexity,verbose = True,verse_end=True)
+        fill_word_1, perp_1, found_correct = get_synonym(args,verse,token_idx,tok_tar_rythms,LLM_perplexity,verbose = True,verse_end=True)
 
         #####################################
         #add last word
@@ -324,7 +324,7 @@ def extend_verse(verse,target_rythm,target_len,LLM_perplexity): # extend the ver
 
         tok_tar_rythms = [target_rythm_ext[verse.token_ends[token_idx]:]]
 
-        fill_word_5, perp_3, _ = get_synonym(verse,token_idx,tok_tar_rythms,LLM_perplexity,after=True,verbose = True,verse_end=True)
+        fill_word_5, perp_3, _ = get_synonym(args,verse,token_idx,tok_tar_rythms,LLM_perplexity,after=True,verbose = True,verse_end=True)
        
 
         ####################################
@@ -332,7 +332,7 @@ def extend_verse(verse,target_rythm,target_len,LLM_perplexity): # extend the ver
         ###################################
 
         tok_tar_rythms = [target_rythm_ext[verse.token_starts[token_idx]:verse.token_starts[token_idx]+(target_len - len(verse.rythm))]]
-        fill_word_3, perp_2a, _ = get_synonym(verse,token_idx-1,tok_tar_rythms,LLM_perplexity,after=True,verbose = True)
+        fill_word_3, perp_2a, _ = get_synonym(args,verse,token_idx-1,tok_tar_rythms,LLM_perplexity,after=True,verbose = True)
         text = text[:token_idx] + [fill_word_3] + text[token_idx:]
         verse_tmp = verse_cl(' '.join(text))
 
@@ -839,7 +839,7 @@ def shorten(verse,num_remove, min_syll = 3, toll = 8): # minimum syllables to re
 
 
 
-def fix_rythm(verse,target_rythm,num_syllabs,LLM_perplexity):
+def fix_rythm(args,verse,target_rythm,num_syllabs,LLM_perplexity):
     '''
     fix the rythm of a verse
     takes:
@@ -877,7 +877,7 @@ def fix_rythm(verse,target_rythm,num_syllabs,LLM_perplexity):
             combs = remove_token(verse,num_rm)                    # get possible combinations of words that could be removed
             if combs: 
                 verse = find_opt_rythm(verse,combs,target_rythm,LLM_perplexity)      # find the metrically best option
-        verse = fix_shifted_rythm(verse,target_rythm, LLM_perplexity, target_len = num_syllabs)    # correct metrically incorrect syllables
+        verse = fix_shifted_rythm(args,verse,target_rythm, LLM_perplexity, target_len = num_syllabs)    # correct metrically incorrect syllables
         print(verse.text)
         difference = compare_verse_rythm(verse,target_rythm)
         num_rm_0 = num_rm
@@ -888,13 +888,13 @@ def fix_rythm(verse,target_rythm,num_syllabs,LLM_perplexity):
 
     if len(verse.rythm)  < num_syllabs:
         print('enter extension')
-        verse = extend_verse(verse,target_rythm,num_syllabs,LLM_perplexity)  # exend the verse
+        verse = extend_verse(args,verse,target_rythm,num_syllabs,LLM_perplexity)  # exend the verse
     return verse
 
 
 
 
-def check_rythm(vers, rythm_reff, last = None, num_stress = None):
+'''def check_rythm(vers, rythm_reff, last = None, num_stress = None):  -> depreciated
     vers = get_rythm_sent(vers)
     rythm_raw = vers.rythm_raw
     rythm = list(itertools.chain.from_iterable(vers.rythm_raw))
@@ -935,7 +935,7 @@ def check_rythm(vers, rythm_reff, last = None, num_stress = None):
   
     # verse = verse_cl(sentence, rythm_reff, rythm_raw)
 
-    return diff, vers
+    return diff, vers'''
 
 if __name__ == "__main__": 
     from gpt2 import LLM_class

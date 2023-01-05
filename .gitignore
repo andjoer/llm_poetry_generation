@@ -3,3 +3,6 @@
 *.wav
 __pycache__/
 .ipynb_checkpoints/
+
+ai_feature_annotation/data/output/
+ai_feature_annotation/data/checkpoints/

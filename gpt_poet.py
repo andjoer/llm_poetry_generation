@@ -4,7 +4,7 @@ import numpy as np
 import re
 from copy import copy
 
-from rythm import check_rythm
+#from rythm import check_rythm
 
 from rythm_utils import extend_target_rythm, verse_cl
 from gpt3 import gpt3
@@ -73,8 +73,9 @@ def get_input_text(verse,num_words_remove):
     input_text_cont = verse.context + '\n' + input_text
 
     return input_text_cont,idx_out'''
-    
-def gpt_poet(args,input_text, num_syll,title_accepted, LLM = None,LLM_2=None):
+
+
+def gpt_poet(args,input_text, num_syll,title_accepted, LLM = None,LLM_2=None,last_state = None):
 
     '''
     generate a new verse with a matching metrum
@@ -93,6 +94,8 @@ def gpt_poet(args,input_text, num_syll,title_accepted, LLM = None,LLM_2=None):
     dividable_rest = args.dividable_rest
     invalid_verse_ends = args.invalid_verse_ends
     repetition_penalty = args.repetition_penalty
+
+    last_state_out = None
 
     len_past = 450
     current_num_syll = 0
@@ -129,7 +132,7 @@ def gpt_poet(args,input_text, num_syll,title_accepted, LLM = None,LLM_2=None):
             block_linebreak = False
             
         if cnt > 9:                                     # if there are more then 10 tries, stop the complete poem
-            return '**'
+            return '**', _
 
         cnt += 1
         
@@ -145,9 +148,9 @@ def gpt_poet(args,input_text, num_syll,title_accepted, LLM = None,LLM_2=None):
             if current_num_syll > 0:
                 random_first = False
 
-            generated = gpt_sample_systematic(input_text_new,LLM,num_return_sequences = 1,top_p = top_p_current,top_k = 20, temperature = temperature,random_first = random_first, random_all = random_all,stop_tokens_alpha = stop_tokens,block_non_alpha = False,
+            generated, last_state_out = gpt_sample_systematic(input_text_new,LLM,num_return_sequences = 1,top_p = top_p_current,top_k = 20, temperature = temperature,random_first = random_first, random_all = random_all,stop_tokens_alpha = stop_tokens,block_non_alpha = False,
                                                 num_syll=pending_syllables,target_rythm=target_rythm_shifted, last_stress=last_stress,num_syll_tollerance=num_syll_tollerance,trunkate_after = trunkate_after,dividable_rest=dividable_rest,
-                                                only_alpha_after = only_alpha_after,invalid_verse_ends=invalid_verse_ends,repetition_penalty=repetition_penalty)
+                                                only_alpha_after = only_alpha_after,invalid_verse_ends=invalid_verse_ends,repetition_penalty=repetition_penalty,return_last_state=True, last_state=last_state)
 
             if generated:
                 top_p_current = top_p
@@ -155,7 +158,7 @@ def gpt_poet(args,input_text, num_syll,title_accepted, LLM = None,LLM_2=None):
                 top_p_current += 0.1
 
                 if top_p_current > 1:
-                    return '**'
+                    return '**', _
 
         else:
 
@@ -244,12 +247,14 @@ def gpt_poet(args,input_text, num_syll,title_accepted, LLM = None,LLM_2=None):
                     if np.sum(comp) == 0 and len(rythm) <= num_syll and len(rythm) >= num_syll*num_syll_tollerance and ((num_syll - len(rythm))%len(target_rythm) == 0 or not dividable_rest) and (not invalid_verse_ends or verse.token_pos not in invalid_verse_ends): # if the resulting verse is long enough: finsihed (rythm[-1] == last or rythm[-1] == 0.5)
 
                         if need_replacement:
+                            last_state_out = None
                             verse = modify_verse(args, verse,LLM_2,num_remove=num_remove)
-                        return re.sub('[.].','',' '.join(verse.text)) + '\n'
+                        return re.sub('[.].','',' '.join(verse.text)) + '\n', last_state_out
                
 
         if candidates and (LLM != 'GPT3' or LLM_2):
             if LLM_2:
+                last_state_out = None
                 best_idx = random.choice(range(len(candidates_ends)))
                 if candidates[best_idx].token_pos[-1] in LLM_2_pos:
                     candidates[best_idx] = modify_verse(args, candidates[best_idx],LLM_2)
@@ -269,7 +274,7 @@ def gpt_poet(args,input_text, num_syll,title_accepted, LLM = None,LLM_2=None):
             new_text = ''
             num_syll_tollerance -= 0.2
             if num_syll_tollerance <= 0.2:
-                return '**'
+                return '**', None
 
 
             

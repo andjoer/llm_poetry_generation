@@ -14,156 +14,11 @@ from perplexity import perplexity
 import random
 import torch
 
+from prompts import prompts, jambus, trochee
+from poetry_generator_utils import parse_arguments, initialize_llms, get_LLM_name
+
+
 import sys
-
-
-
-######################################
-jambus = [0,1]                        # defining the metric patterns
-trochee = [1,0]
-######################################
-
-
-#Joseph Karl Benedikt, Freiherr von Eichendorff  Laue Luft kommt blau geflossen 
-prompt_1 = ['''Laue Luft kommt blau geflossen,
-Frühling, Frühling soll es sein!
-Waldwärts Hörnerklang geschossen,
-Mutger Augen lichter Schein;
-Und das Wirren bunt und bunter
-''',[10],trochee]                                     # a prompt is a list of a text followed by the syllable list and the meter
-
-# Friedrich Schiller Die Künstler
-prompt_2 = ['''Nur durch das Morgentor des Schönen
-Drangst du in der Erkenntnis Land.
-An höhern Glanz sich zu gewöhnen,
-Übt sich am Reize der Verstand.
-''',[9,8],jambus]
-
-# Friedrich Schiller Die Künstler
-prompt_3 = ['''Als der Erschaffende von seinem Angesichte
-Den Menschen in die Sterblichkeit verwies
-Und eine späte Wiederkehr zum Lichte
-Auf schwerem Sinnenpfad ihn finden hieß,
-''',[11],jambus]
-
-# Friedrich Schiller Genialität
-prompt_4 = ['''Wodurch gibt sich der Genius kund? Wodurch sich der Schöpfer
-Kund gibt in der Natur, in dem unendlichen All:
-Klar ist der Äther und doch von unermeßlicher Tiefe;
-Offen dem Aug, dem Verstand bleibt er doch ewig geheim.
-''',[12,13],trochee]
-
-# Johannes Daniel Falk An das Nichts
-prompt_5 = ['''Selbst philosophische Systeme –
-Kants Lieblingsjünger, Reinhold, spricht’s –
-Von Plato bis auf Jakob Böhme,
-Sie waren samt und sonders – Nichts.
-
-Was bin ich selbst? – Ein Kind der Erde,
-Der Schatten eines Traumgesichts,
-Der halbe Weg von Gott zum Werde,
-Ein Engel heut, und morgen – Nichts.
-''',[9],jambus]
-
-# Johann Wolfgang von Goethe Vermächtnis
-prompt_6 = ['''Kein Wesen kann zu nichts zerfallen!
-Das Ewge regt sich fort in allen,
-Am Sein erhalte dich beglückt!
-Das Sein ist ewig: denn Gesetze
-Bewahren die lebendgen Schätze,
-Aus welchen sich das All geschmückt.
-''',[9,10],jambus]
-
-# Johann Wolfgang von Goethe Parabase
-prompt_7 = ['''Freudig war, vor vielen Jahren,
-Eifrig so der Geist bestrebt,
-Zu erforschen, zu erfahren,
-Wie Natur im Schaffen lebt.
-Und es ist das ewig Eine,
-Das sich vielfach offenbart
-''',[8],trochee]
-
-# Giacomo Graf Leopardi Palinodie an den Marchese Gino Capponi
-prompt_8 = ['''O Geist, o Einsicht, Scharfsinn, übermenschlich,
-Der Zeit, in der wir leben! Welches sichre
-Philosophiren, welche Weisheit lehrt
-In den geheimsten, höchsten, feinsten Dingen
-Den kommenden Jahrhunderten das unsre!
-Mit welcher ärmlichen Beständigkeit
-Wirft heut der Mensch vor das, was gestern er
-Verspottet, sich auf's Knie, um morgen wieder
-Es zu zertrümmern, dann aufs neu die Trümmer
-Zu sammeln, es auf den Altar zurück
-Zu setzen, es mit Weihrauch zu bequalmen!
-''',[10,11],jambus]
-
-# Friedrich Hebbel Philosophenschicksal
-prompt_9 = ['''Salomons Schlüssel glaubst du zu fassen und Himmel und Erde
-Aufzuschließen, da löst er in Figuren sich auf,
-Und du siehst mit Entsetzen das Alphabet sich erneuern,
-Tröste dich aber, es hat währende der Zeit sich erhöht.
-''',[12],trochee]
-
-# Heinrich Heine Himmelfahrt
-prompt_10 = ['''Die Philosophie ist ein schlechtes Metier.
- Wahrhaftig, ich begreife nie,
-Warum man treibt Philosophie.
-Sie ist langweilig und bringt nichts ein,
-Und gottlos ist sie obendrein;
-''',[11],jambus]
-
-# Friedrich Schiller Jeremiade
-prompt_11 = ['''Alles in Deutschland hat sich in Prosa und Versen verschlimmert,
-Ach, und hinter uns liegt weit schon die goldene Zeit!
-Philosophen verderben die Sprache, Poeten die Logik.
-''',[12,13],trochee]
-
-# Robert Gernhardt, Trost und Rat
-prompt_12 = ['''Ja wer wird denn gleich verzweifeln,
-weil er klein und laut und dumm ist?
-Jedes Leben endet. Leb so,
-daß du, wenn dein Leben um ist
-
-von dir sagen kannst: Na wenn schon!
-Ist mein Leben jetzt auch um,
-habe ich doch was geleistet:
-ich war klein und laut und dumm.
-''',[8,9],trochee]
-
-# Robert Gernhardt, Ach!
-prompt_13 =['''Woran soll es gehn? Ans Sterben?
-Hab ich zwar noch nie gemacht,
-doch wir werd’n das Kind schon schaukeln —
-na, das wäre ja gelacht!
-
-Interessant so eine Sanduhr!
-Ja, die halt ich gern mal fest.
-Ach – und das ist Ihre Sense?
-Und die gibt mir dann den Rest?
-''',[9,8],trochee]
-
-# Antonio Cho
-prompt_14 = ['''Gibt es einen Dadageist?
-Ich behaupte, er sei
-das große Gelächter
-das einzig umfassende metaphysische Gelächter
-das große Gelächter
-über den Witz der Schöpfung
-das große Lachen
-über den Witz der eigenen Existenz.
-''',[10,9],jambus]
-
-prompt_15 = ['''über den Feldhamster Karl und den Philosophen Kant:
-''',[9,8],trochee]
-
-
-def get_LLM_name(LLM):
-    if type (LLM) == str:
-        LLM_name = LLM
-    else:
-        LLM_name = LLM.model_name
-
-    return LLM_name
 
 
 def generate_poetry(args, 
@@ -187,6 +42,7 @@ def generate_poetry(args,
     num_lines: number of verses to generate
     '''
 
+    failed_rhyme_count_limit = args.failed_rhyme_count_limit
 
     prompt = args.prompt
     target_rythm = args.target_rythm
@@ -215,11 +71,13 @@ def generate_poetry(args,
     print_text = ''
     cnt = 0
     title = ''
-    title_accepted = True
+    title_accepted = False              # feature disabled; the generator won't suggest titles; set true to enable
     offset = 0
     rating = 'pending'
+    rhyme_pending = False
     for i in range(num_lines):
 
+        failed_rhyme_count = 0
         shots = args.verse_versions
 
         tmp_lst = []
@@ -228,8 +86,12 @@ def generate_poetry(args,
 
         num_syll = num_syll_lst[cnt%len(num_syll_lst)]
 
+        if not rhyme_pending:
+            last_state = None
+
+
         for j in range(shots):
-            line = gpt_poet(args,input_text,num_syll,title_accepted,LLM=LLM,LLM_2=LLM_2)  # generate a new verse
+            line, last_state = gpt_poet(args,input_text,num_syll,title_accepted,LLM=LLM,LLM_2=LLM_2,last_state=last_state)  # generate a new verse
 
             if line[:2] == '##':                                          # no text has been created, but maybe a new title
                 offset += cnt
@@ -247,7 +109,7 @@ def generate_poetry(args,
             else:        
                 verse_tmp = verse_cl(line)
                 verse_tmp.context = input_text[-400:]
-                verse_tmp = fix_rythm(verse_tmp,target_rythm,num_syll,LLM_perplexity)          # fix the rythm of the generated verse
+                verse_tmp = fix_rythm(args,verse_tmp,target_rythm,num_syll,LLM_perplexity)          # fix the rythm of the generated verse
 
                 perplexity_check_text = '\n'.join(input_text.split('\n')[-2:]) + ' '.join((re.sub('[^a-zA-ZäöüÄÖÜß ]','',' '.join(verse_tmp.text)).split()))
                 
@@ -273,10 +135,23 @@ def generate_poetry(args,
 
             verse_lst.append(verse)
             
-            if rhyme_scheme and rhyme_scheme[cnt%freq] != -1:  # if rhyme partner already exists
-     
-          
-                verse_lst = find_rhyme(args,verse_lst,offset + int(int(cnt/freq)*freq+rhyme_scheme[cnt%freq]),cnt,LLM_perplexity,LLM=LLM_rhyme,LLM2=LLM_2)
+            cnt = len(verse_lst)-1                                 # TEMPORARLY fix when feature ready
+            if rhyme_scheme and rhyme_scheme[(cnt)%freq] != -1:  # if rhyme partner already exists
+                
+                if failed_rhyme_count == 0:
+                    verse_lst_0 = verse_lst.copy()
+                if failed_rhyme_count > failed_rhyme_count_limit:
+                    failed_rhyme_count = 0
+                    verse_lst = verse_lst_0.copy()
+                else: 
+                    force_rhyme = args.force_rhyme    
+                    verse_lst = find_rhyme(args,verse_lst,offset + int(int(cnt/freq)*freq+rhyme_scheme[cnt%freq]),cnt,LLM_perplexity,LLM=LLM_rhyme,LLM2=LLM_2, force_rhyme = force_rhyme)
+
+                if len(verse_lst)-1 < cnt:
+                    rhyme_pending = True
+                    failed_rhyme_count += 1
+                else:
+                    rhyme_pending = False
                 input_text = input_text_0
                 print_text = ''
                 for verse in verse_lst:
@@ -302,202 +177,6 @@ def generate_poetry(args,
         print(print_text)
 
     return print_text, rating
-
-def str_eval(string):
-    return ast.literal_eval(str(string))
-
-def parse_arguments():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--prompt", type=str,default=None,help="initial input prompt")
-    parser.add_argument("--title", type=str,default='Die Regierung',help="title of the poem") 
-    parser.add_argument("--generated_lines", type=int,default=8,help="number of lines that will be generated")
-    parser.add_argument("--generated_poems", type=int,default=1000,help="number of poems that will be generated")
-
-    parser.add_argument("--verse_versions", type=int,default=1,help="number of versions for one verse will be generated; the one with lowest perplexity will be chosen")
-    parser.add_argument("--check_end", type=str_eval,default=True,help="append '.' after verse to check perplexity") # experimental, might help to avoid invalid end of verses
-    parser.add_argument("--invalid_verse_ends", type=str_eval,default=['CONJ','CCONJ'],help="pos tokens that should not appear at the end of a verse")
-    parser.add_argument("--repetition_penalty", type=float,default=1.2,help="repetition penalty according to CTRL paper")
-
-
-    parser.add_argument("--LLM", type=str,default='Anjoe/german-poetry-gpt2-large',help="generative language model to use from the huggingface library or GPT3")
-    parser.add_argument("--LLM_sampling", type=str,default='systematic',help="sampling method for gpt2 models - systematic or multinomial")
-    parser.add_argument("--LLM_random_first", type=str_eval,default=True,help="mix the top p filtered logits at the first position by multinomial sampling")
-    parser.add_argument("--LLM_random_all", type=str,default=True,help="mix the top p filtered logits at every position by multinomial sampling")
-    parser.add_argument("--LLM_temperature", type=float,default=0.9,help="sampling temperature for systematic verse sampling")
-    parser.add_argument("--trunkate_after", type=int,default=50,help="number of tries after which the search beam will be trunkated when sampling = systematic")
-    parser.add_argument("--LLM_top_p", type=float,default=None,help="top p filter value used if sampling = systematic for the initial verse")
-    parser.add_argument("--syllable_count_toll", type=float,default=0.65,help="precentage of the allowed difference between target syllables and delivered syllables by gpt_poet")
-    parser.add_argument("--dividable_rest", type=str_eval,default=True,help="if the number of pending syllables left by gpt_poet need to be devidable by the length of the target rythm")   # then bert would not need to find a different ending
-    parser.add_argument("--verse_stop_tokens", type=str_eval,default=[',','.','!','?',';',':'],help="list of tokens after which a verse could end (only applies when sampling = systematic)")
-    parser.add_argument("--verse_alpha_only_after", type=int,default=4,help="blocks non alphabetic tokens close to the verse ending which is calculated by num_syll*num_syll_toll-verse_alpha_only_after")
-
-
-    parser.add_argument("--LLM_2", type=str,default=None,help="model to replace words with certain pos tags")
-    parser.add_argument("--LLM_2_pos", type=str_eval,default=['NOUN','PROPN','VERB'],help="pos token of the words that should be replaced by the second language model")
-    parser.add_argument("--LLM_2_sampling", type=str,default='systematic',help="sampling method for the second language model - systematic or multinomial")
-    parser.add_argument("--LLM_2_temperature", type=float,default=0.9,help="temperature for the second LLM")
-    parser.add_argument("--LLM_2_top_p", type=float,default=0.7,help="top p for the second LLM when the sampling is multinomial")
-    parser.add_argument("--top_p_dict_replace", type=str_eval,default={0:0.8,1:0.4},help="top p dictionary used for the words replaced by the second model")
-
-    parser.add_argument("--LLM_rhyme", type=str,default=None,help="generative language model to use from the huggingface library or gpt3")
-    parser.add_argument("--LLM_rhyme_sampling", type=str,default='systematic',help="sampling method for the rhyme model - systematic or multinomial")
-    parser.add_argument("--rhyme_temperature", type=float,default=0.9,help="sampling temperature for rhyming words sampling")
-    
-    parser.add_argument("--use_pos_rhyme_syns", type=str_eval,default=True,help="synonyms with the same pos tokens are allowed when looking for rhymes (only if sampling = systematic)")
-    parser.add_argument("--top_p_dict_rhyme", type=str_eval,default={0:0.65,2:0.5},help="top p dictionary used to find rhyming alternatives for a single word")
-    parser.add_argument("--top_p_rhyme", type=float,default=None,help="top p value used to find rhyming alternatives for longer sequences")
-    parser.add_argument("--max_rhyme_dist", type=int,default=None,help="maximum siamese vector distances of two words in order to be considered rhyming")
-    parser.add_argument("--rhyme_stop_tokens", type=str_eval,default=['\n','.'],help="list of tokens after which a verse could end (only applies when sampling = systematic)")  
-
-    parser.add_argument("--rhyme_scheme", type=str,default=None,help="rhyme scheme for the created poem")
-    parser.add_argument("--num_syll_list", type=str_eval,default=None,help="list of the syllable count of each line; when more lines than items in the list are generated it iterates")
-    parser.add_argument("--target_rythm", type=str,default=None,help="rythm of the poem: jambus or trochee")
-    parser.add_argument("--use_tts", type=str_eval,default=True,help="use also text to speech to fine-select the best rhyming pair")
-    parser.add_argument("--size_tts_sample", type=int,default=10,help="number of best candidats forwarded by sia rhyme to the tts algorithm")
-    parser.add_argument("--use_colone_phonetics", type=str_eval,default=False,help="if a rhyme is detected by using colone phonetics, prefer this one over sia rhyme/tts")
-    parser.add_argument("--rhyme_last_two_vowels", type=str_eval,default=False,help="if a rhyme is not detected by colone phonetics but has the last two vowels in common it is considered a rhyme and prefered over sia rhyme/tts")
-    parser.add_argument("--allow_pos_match", type=str_eval,default=True,help="Ignores the end of an alternative verse ending if the pos tags match the original verse")
-
-    parser.add_argument("--log_stdout", type=str_eval,default=True,help="if a rhyme is detected by using colone phonetics, prefer this one over sia rhyme/tts")
-    
-    args = parser.parse_args()
-
-    if not args.max_rhyme_dist:
-        if not args.use_tts:
-            args.max_rhyme_dist = 0.45
-        else: 
-            args.max_rhyme_dist = 0.6
-
-    #LLM dependent defaults
-
-    if args.LLM_2 and not args.LLM_rhyme: 
-        args.LLM_rhyme = args.LLM_2
-
-    if not (args.LLM_rhyme or args.LLM_2): 
-        if len(args.LLM) <= 5:                                        # API
-            args.LLM_rhyme = args.LLM
-            args.LLM_rhyme_sampling = 'multinomial'
-
-    if args.LLM_rhyme_sampling != 'systematic':
-        args.top_p_rhyme = 1 
-    else: 
-        args.top_p_rhyme = 0.5
-
-    if len(args.LLM) < 5:
-        args.LLM_sampling = 'multinomial'
-
-    if args.LLM_sampling == 'multinomial' and not args.LLM_top_p:
-        args.LLM_top_p = 1
-    elif args.LLM_sampling != 'multinomial' and not args.LLM_top_p:
-        args.LLM_top_p = 0.4
-
-
-    return args
-
-def initialize_llms(args):
-
-    if torch.cuda.device_count() >= 1:
-
-        LLM_device = 'cuda:0'
-    else: 
-        LLM_device = 'cpu'
-
-    default_llm = 'Anjoe/german-poetry-gpt2-large'
-
-    
-    if args.LLM == 'GPT2-large':                                                        # backwards compatibility
-        LLM = LLM_class(default_llm,sampling='multinomial')
-
-
-    if len(args.LLM) > 5:          # ohterwise it is string for an api, not a huggingface link
-        LLM = LLM_class(args.LLM,device=LLM_device,sampling=args.LLM_sampling)
-    else: LLM = args.LLM
-  
-    if args.LLM_2:
-        if torch.cuda.device_count() > 1 and type(LLM) != str:
-            LLM_2_device =  'cuda:1'
-        elif type(LLM) == str and torch.cuda.device_count() == 1:
-            LLM_2_device = 'cuda:0'
-        else: 
-            LLM_2_device = 'cpu'
-        LLM_2 = LLM_class(args.LLM_2,device=LLM_2_device,sampling=args.LLM_2_sampling)
-
-    else:
-        LLM_2 = None
-
-    
-
-    if LLM_2 and not args.LLM_rhyme:
-        if args.LLM_rhyme_sampling == 'multinomial' or args.LLM_2_sampling == 'multinomial':
-            LLM_rhyme = LLM_class(LLM_2.model_name,sampling=args.LLM_rhyme_sampling, device='cpu')
-        else:
-            LLM_rhyme = LLM
-
-    elif not args.LLM_rhyme and args.LLM_rhyme_sampling != 'multinomial':
-        if (LLM.sampling != args.LLM_rhyme_sampling and args.LLM_rhyme_sampling) and torch.cuda.device_count() > 1:
-            LLM_rhyme = LLM_class(LLM.model_name,sampling=args.LLM_rhyme_sampling, device='cuda:1')
-
-        elif (LLM.sampling == args.LLM_rhyme_sampling and args.LLM_rhyme_sampling) and args.LLM_rhyme_sampling == 'systematic':
-            LLM_rhyme = LLM
-
-        elif torch.cuda.device_count() > 1:             
-            LLM_rhyme = LLM_class(LLM.model_name,sampling=args.LLM_rhyme_sampling,device='cuda:1')
-        else: 
-            LLM_rhyme = LLM_class(LLM.model_name,sampling=args.LLM_rhyme_sampling,device='cpu')
-
-    
-    elif not args.LLM_rhyme and args.LLM_rhyme_sampling == 'multinomial':
-        LLM_rhyme = LLM_class(LLM.model_name,sampling=args.LLM_rhyme_sampling,device='cpu')
-
-    else: 
-        if len(args.LLM_rhyme) <= 5:
-            LLM_rhyme = args.LLM_rhyme
-        elif args.LLM_rhyme_sampling == 'multinomial':
-            LLM_rhyme = LLM_class(args.LLM_rhyme,sampling=args.LLM_rhyme_sampling,device='cpu')
-
-        elif not LLM_2 and type(LLM) == str and torch.cuda.device_count() > 0:                        # LLM via API
-            LLM_rhyme = LLM_class(args.LLM_rhyme,sampling=args.LLM_rhyme_sampling,device = 'cuda:0')
-
-        elif not LLM_2 and torch.cuda.device_count() > 1:
-            LLM_rhyme = LLM_class(args.LLM_rhyme,sampling=args.LLM_rhyme_sampling,device = 'cuda:1') 
-
-        elif LLM_2 and torch.cuda.device_count() > 1 and type(LLM) == str:
-            LLM_rhyme = LLM_class(args.LLM_rhyme,sampling=args.LLM_rhyme_sampling,device = 'cuda:1') 
-        else:
-            LLM_rhyme = LLM_class(args.LLM_rhyme,sampling=args.LLM_rhyme_sampling,device = 'cpu')
-
-
-    LLM_perplexity = None
-
-    LLMs = [LLM,LLM_2,LLM_rhyme]
-
-    gpu_lst = []
-    free_gpu = ''
-
-    for item in LLMs:
-        if type(item) != str and item: 
-            gpu_lst.append(item.device)
-
-    for i in range(torch.cuda.device_count()):
-
-        if 'cuda:'+str(i) not in gpu_lst:
-            free_gpu = 'cuda:'+str(i)
-            break 
-    if not free_gpu:
-        perplexity_device = 'cpu'
-    else: 
-        perplexity_device = free_gpu
-
-    if LLM_2:
-        LLM_perplexity = LLM_2
-    elif type(LLM) != str: 
-        LLM_perplexity = LLM
-
-    if not LLM_perplexity:
-        LLM_perplexity = LLM_class(default_llm,device=perplexity_device)
-
-
-    return LLM, LLM_perplexity, LLM_rhyme, LLM_2
 
 
 if __name__ == "__main__":  
@@ -540,7 +219,7 @@ if __name__ == "__main__":
         rhyme_schemes = ['aabb','abba','abab','']              # rhyme schemes to sample from
 
         args.prompt = prompt_0
-        prompts = [prompt_2,prompt_3,prompt_5,prompt_7,prompt_8,prompt_10,prompt_11,prompt_12,prompt_13] # prompt to sample from
+         # prompt to sample from
   
         prompt = random.choice(prompts)
         num_syll = prompt[1]                       # the metric properties are defined in the prompt

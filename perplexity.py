@@ -1,5 +1,5 @@
-from transformers import GPT2LMHeadModel, GPT2TokenizerFast
-from parameters import gpt2_model
+#from transformers import GPT2LMHeadModel, GPT2TokenizerFast
+#from parameters import gpt2_model
 import torch
 
 #device = "cuda:1"

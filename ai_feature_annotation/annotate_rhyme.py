@@ -1,12 +1,16 @@
 import os
 import sys
 import inspect
-
+import argparse
+import glob
+import re
 currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 parentdir = os.path.dirname(currentdir)
 sys.path.insert(0, parentdir) 
 
 from sia_rhyme import siamese_rhyme
+from rhyme_detection.word_spectral import wordspectrum
+from rhyme_detection.utils import check_rhyme
 
 import pandas as pd
 import os
@@ -19,8 +23,52 @@ import networkx
 from networkx.algorithms.components.connected import connected_components,number_connected_components
 
 from preprocess_annotation import preprocess_ano
+
 #from networkx.algorithms.components import number_strongly_connected_components
-rhyme_model = siamese_rhyme.siamese_rhyme()
+
+
+class rhyme_vectors():
+    
+    def __init__(self, method):
+        self.method = method
+
+        if method == 'siamese':
+            self.rhyme_model = siamese_rhyme.siamese_rhyme()
+            self.get_vector = self.get_vector_sia
+            self.get_distance = self.get_distance_sia
+            self.thresh = 0.4 
+            self.thresh_max = 0.7
+
+        else:
+            self.get_vector = self.get_vector_tts
+            self.get_distance = self.get_distance_tts
+            self.thresh = 12
+            self.thresh_max = 16
+
+    def get_vector_sia(self,word):
+
+        return self.rhyme_model.get_word_vec(word)
+
+    def get_vector_tts(self,word):
+
+        return wordspectrum(word)
+
+
+    def get_distance_sia(self,vec_1,vec_2):
+
+        return self.rhyme_model.vector_distance(vec_1,vec_2)
+
+    def get_distance_tts(self,vec_1,vec_2):
+        dist, _ = check_rhyme(vec_1,vec_2,
+                            features = 'mfccs',
+                            order=0,
+                            length = 19, 
+                            cut_off = 1,
+                            min_matches=10,
+                            pool=0)
+        return dist
+
+
 
 def to_graph(matches):
     G = networkx.Graph()
@@ -54,6 +102,7 @@ def lst_dist(lst_1,lst_2):
     return total_cost
 
 def scheme_to_idx(rhyme_scheme):
+
     letters = (list(set(rhyme_scheme)))
     match_list = []
     for letter in letters:
@@ -89,16 +138,17 @@ def get_best_match(dst_mat,thresh):
     return matches
 
 
-def rhyme_pairs(verse_endings,thresh = 0.4, thresh_max = 0.7):
+def rhyme_pairs(verse_endings,rhyme_detection):
     
 
-    vector_list = [rhyme_model.get_word_vec(word) for word in verse_endings]
+    #vector_list = [rhyme_model.get_word_vec(word) for word in verse_endings]
+    vector_list = [rhyme_detection.get_vector(word) for word in verse_endings]
     #print(verse_endings)
     dst_lst = []
     for cnt, vector_1 in enumerate(vector_list):
         dst_lst_int = [0]*(cnt+1)
         for vector_2 in vector_list[cnt+1:]:
-                dst = rhyme_model.vector_distance(vector_1,vector_2)
+                dst = rhyme_detection.get_distance(vector_1,vector_2)
                 dst_lst_int.append(dst)
         dst_lst.append(dst_lst_int)
     dst_mat = np.asarray(dst_lst)  
@@ -121,14 +171,14 @@ def rhyme_pairs(verse_endings,thresh = 0.4, thresh_max = 0.7):
     dst_mat = np.minimum(dst_mat, dst_str_mat)    
     np.fill_diagonal(dst_mat,100)
 
-    rhymes = np.where(dst_mat < thresh )
+    rhymes = np.where(dst_mat < rhyme_detection.thresh )
     
     minima = np.amin(dst_mat,axis=1)
     min_idx = np.argmin(dst_mat, axis=1)
 
     matches = []
     for i in range (len(minima)):
-        if minima[i] < thresh:
+        if minima[i] < rhyme_detection.thresh:
             matches.append([i,min_idx[i]])
     
 
@@ -149,13 +199,13 @@ def rhyme_pairs(verse_endings,thresh = 0.4, thresh_max = 0.7):
         minima = np.amin(dst_mat_2,axis=1)
         min_idx = np.argmin(dst_mat_2, axis=1)
 
-        thresh_worst = thresh_max
+        thresh_worst = rhyme_detection.thresh_max
         if match_diff % 2 > 0: 
             thresh_worst = np.amax(minima[np.where(minima<100)])
 
         for i in min_idx_left:
 
-            if minima[i] < thresh_max and minima[i] < thresh_worst:
+            if minima[i] < rhyme_detection.thresh_max and minima[i] < thresh_worst:
                 matches.append([i,min_idx[i]])
             
     
@@ -170,60 +220,158 @@ def rhyme_pairs(verse_endings,thresh = 0.4, thresh_max = 0.7):
         match_list += (not_matched_elem)
 
     match_list = sorted(match_list,key=min)
+
+
+    diff = []
     
-    return match_list
+    for match in match_list:
+        if len(match) > 1:
+            coordinates = [(a, b) for idx, a in enumerate(match) for b in match[idx + 1:]]
+            coordinates_array = np.moveaxis(np.array(coordinates), -1, 0)
+
+            diff.append(dst_mat[tuple(coordinates_array)].tolist())
+
+    return match_list,diff
 
 #print(number_strongly_connected_components(G))
 #match_list = [list(x) for x in list(connected_components(G))]
 
-def compare_rhyme_df(poem_df):
+def compare_rhyme_df(poem_df,gold,rhyme):
     differences = []
-    rhyme_schemes = []
     for index, row in tqdm.tqdm(poem_df.iterrows(), total=poem_df.shape[0]):
 
-            verse_endings = row['endings']
-            rhyme_scheme = row['rhyme']
+            rhyme_scheme_gold = row[gold]
+            rhyme_scheme = row[rhyme]
 
-            if len(verse_endings) > 1:
-                match_list = rhyme_pairs(verse_endings)
-
-                gold_idx = scheme_to_idx(rhyme_scheme)
-                diff = lst_dist(gold_idx,match_list)
+            if len(rhyme_scheme) > 1:
+                rhyme_idx = scheme_to_idx(rhyme_scheme)
+                gold_idx = scheme_to_idx(rhyme_scheme_gold)
+                diff = lst_dist(gold_idx,rhyme_idx)
                 differences.append(diff)
-                
-                rhyme_scheme = idx_to_scheme(match_list)
-                rhyme_schemes.append(rhyme_scheme)
+
             else: 
                 differences.append(0)
-                rhyme_schemes.append('a')
-         
-    
+               
+    return differences
+
+class Annotate_rhyme():
+    def __init__(self,args):
+        self.args = args
+        self.rhyme_schemes = []
+        self.differences = []
+
+        input_file = os.path.join(self.args.data_dir, self.args.fname_input)
+
+        self.rhyme_detection = rhyme_vectors(args.method)
+
+        try: 
+            self.poem_df = pd.read_csv(input_file)
+        except: 
+            try: 
+                self.poem_df = pd.read_pickle(input_file)
+            except: 
+                print('file not found or not a csv or pickle file')
+                raise Exception
+
+        self.poem_df = preprocess_ano(self.poem_df,col_text = args.text_column)
+
+        if args.load_checkpoint:
             
-    return differences, rhyme_schemes
+            fname_ckp = os.path.join(args.data_dir+'/checkpoints', args.load_checkpoint)
+            if fname_ckp[-3:] != 'pkl':
+                fname_ckp += '.pkl'
+            try: 
+                ckp_df = pd.read_pickle(fname_ckp)
+            except: 
+                print('unable to load checkpoint')
+                raise Exception
+            
+            self.rhyme_schemes = ckp_df[self.args.rhyme_column].to_list()
+            self.differences = ckp_df[self.args.difference_column].to_list()
+
+        self.offset = len(self.rhyme_schemes)
+
+        files = glob.glob(args.data_dir+'/'+args.fname_output+'*')
+        max_idx = 1
+        if files: 
+            for file in files: 
+                try: 
+                    max_idx = max(int(re.findall(r'\d+', file)[0]),max_idx)    # find the number of the last file
+                except: 
+                    pass
+        
+            self.args.fname_output += '_' + str(max_idx +1)
+
+    def annotate_rhyme(self):
+        
+        for index, row in tqdm.tqdm(self.poem_df[self.offset:].iterrows(), total=self.poem_df[self.offset:].shape[0]):
+            verse_endings = row['endings']
+
+            if len(verse_endings) > 1:
+                match_list, diff = rhyme_pairs(verse_endings,self.rhyme_detection)
+                rhyme_scheme = idx_to_scheme(match_list)
+                self.rhyme_schemes.append(rhyme_scheme)
+                self.differences.append(diff)
+            else: 
+                self.rhyme_schemes.append('a')
+
+            if (index+1)%self.args.save_every == 0: 
+                self.save_ckp()
+
+        self.poem_df[self.args.rhyme_column] = self.rhyme_schemes
+        #self.save_df_at(self.args.data_dir,self.args.fname_output, annotated_df)
+
+    def compare_to_gold(self):
+        print(self.poem_df.head())
+        self.poem_df['difference'] = compare_rhyme_df(self.poem_df,self.args.rhyme_column,self.args.gold_column)
+
+    def get_dataframe(self):
+        text = self.poem_df['text'].tolist()[:len(self.rhyme_schemes)]
+        annotated_df = pd.DataFrame(list(zip(text, self.rhyme_schemes, self.differences)),
+                columns =['text', self.args.rhyme_column,self.args.difference_column])
+        return annotated_df
+
+    def save_ckp(self):
+        annotated_dataframe = self.get_dataframe()
+        fname = self.args.fname_output +'_ckp_' + str(len(self.rhyme_schemes))
+        self.save_df_at(args.data_dir+'/checkpoints',fname,annotated_dataframe)
+
+    def save_df(self):
+        self.save_df_at(self.args.data_dir,self.args.fname_output,self.poem_df)
+
+    def save_df_at(self,path,fname,dataframe):
+        dataframe.to_csv(os.path.join(path, fname +'.csv'))
+        dataframe.to_pickle(os.path.join(path, fname +'.pkl'))
+        print('saved file: '+ os.path.join(path, fname))
 
 if __name__ == "__main__":  
-    path = 'data'
-    fname = 'rhyme_df.pkl'
-    fname_save = 'rhyme_df_pred.csv'
-    fname_save_pkl = 'rhyme_df_pred.pkl'
 
-    rhyme_df_read = pd.read_pickle(os.path.join(path, fname))
+    parser = argparse.ArgumentParser()
+    
+
+    parser.add_argument("--data_dir", type=str,default='data',help="subdirectory for the input and output data")
+    parser.add_argument("--fname_output", type=str,default='rhyme_df_rhyme_ano',help="filename of the output file")
+    parser.add_argument("--fname_input", type=str,default='rhyme_df_rhyme_ano_tts.pkl',help="filename of the created file")
+    parser.add_argument("--text_column", type=str,default='text',help="name of the column that contains the texts")
+    parser.add_argument("--gold_column", type=str,default='rhyme',help="name of the column with gold annotation")
+    parser.add_argument("--rhyme_column", type=str,default='rhyme_scheme',help="column of the ai annotation")
+    parser.add_argument("--difference_column", type=str,default='difference',help="column for the vector differences")
+    parser.add_argument("--save_every", type=int,default=10000,help="number of verses after which a checkpoint will be saved")
+    parser.add_argument("--load_checkpoint", type=str,default=None,help="filename of the checkpoint to load")
+    parser.add_argument("--method", type=str,default='siamese',help="method used to detect the rhymes (tts or siamese)")
+
+    args = parser.parse_args()
+
+    args.rhyme_column += '_'+args.method
+    args.fname_output += '_'+args.method
+    args.difference_column += '_'+args.method
 
 
-    poem_df = preprocess_ano(rhyme_df_read)
-    print(poem_df.head())
-    diff_lst, rhyme_lst = compare_rhyme_df(poem_df)
+    annotation = Annotate_rhyme(args)
+    annotation.annotate_rhyme()
+    annotation.save_df()
 
-    diff_lst_ext = diff_lst + [0]*(len(poem_df) - len(diff_lst))
+    if args.gold_column:
+        annotation.compare_to_gold()
+        annotation.save_df()
 
-    rhyme_lst_ext = rhyme_lst + ['z']*(len(poem_df) - len(diff_lst))
-
-    poem_df['error'] = diff_lst_ext
-    poem_df['prediction'] = rhyme_lst_ext
-
-    poem_df.to_csv(os.path.join(path, fname_save))
-    poem_df.to_pickle(os.path.join(path, fname_save_pkl))
-    print(poem_df.head())
-
-    print('sum of errors:')
-    print(sum(diff_lst))

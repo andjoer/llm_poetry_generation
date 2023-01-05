@@ -4,6 +4,8 @@ import inspect
 import re
 import argparse
 import glob
+import numpy as np
+from identify_meter import identify_meter
 
 currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 parentdir = os.path.dirname(currentdir)
@@ -34,8 +36,29 @@ class Annotate_rythm():
         try: 
             self.poem_df = pd.read_csv(input_file)
         except: 
-            print('file not found or not a csv file')
-            raise Exception
+            try: 
+                self.poem_df = pd.read_pickle(input_file)
+            except: 
+                print('file not found or not a csv or pickle file')
+                raise Exception
+
+        if args.load_checkpoint:
+            
+            fname_ckp = os.path.join(args.data_dir+'/checkpoints', args.load_checkpoint)
+            if fname_ckp[-3:] != 'pkl':
+                fname_ckp += '.pkl'
+            try: 
+                ckp_df = pd.read_pickle(fname_ckp)
+            except: 
+                print('unable to load checkpoint')
+                raise Exception
+            
+            self.rythm_lst = ckp_df['rythm'].to_list()
+            self.rythm_tok_lst = ckp_df['rythm_tok'].to_list()
+            self.pos_lst = ckp_df['pos'].to_list()
+            self.ipa_lst = ckp_df['ipa'].to_list()
+
+        self.offset = len(self.ipa_lst)
 
         self.poem_df = preprocess_ano_rythm(self.poem_df,col_text = args.text_column)
 
@@ -52,7 +75,7 @@ class Annotate_rythm():
 
     def annotate_rythm(self):
         
-        for index, row in tqdm.tqdm(self.poem_df.iterrows(), total=self.poem_df.shape[0]):
+        for index, row in tqdm.tqdm(self.poem_df[self.offset:].iterrows(), total=self.poem_df[self.offset:].shape[0]):
             verse_rythm = []
             verse_rythm_tok = []
             verse_pos = []
@@ -75,7 +98,7 @@ class Annotate_rythm():
                 self.save_ckp()
 
         annotated_df = self.get_dataframe()
-        self.save_df(self.args.data_dir,self.args.fname_output, annotated_df)
+        self.save_df_at(self.args.data_dir,self.args.fname_output, annotated_df)
 
     def get_dataframe(self):
         text = self.poem_df['text'].tolist()[:len(self.rythm_lst)]
@@ -86,30 +109,58 @@ class Annotate_rythm():
     def save_ckp(self):
         annotated_dataframe = self.get_dataframe()
         fname = self.args.fname_output +'_ckp_' + str(len(self.rythm_lst))
-        self.save_df(args.data_dir+'/checkpoints',fname,annotated_dataframe)
+        self.save_df_at(args.data_dir+'/checkpoints',fname,annotated_dataframe)
 
-    def save_df(self,path,fname,dataframe):
+    def save_df(self):
+        self.save_df_at(self.args.data_dir,self.args.fname_output,self.poem_df)
+
+    def save_df_at(self,path,fname,dataframe):
         dataframe.to_csv(os.path.join(path, fname +'.csv'))
         dataframe.to_pickle(os.path.join(path, fname +'.pkl'))
         print('saved file: '+ os.path.join(path, fname))
 
+    def identify(self):
+        predictions_lst = []
+        diffs_lst = []
+        idxs_lst = []
+        for index, row in tqdm.tqdm(self.poem_df.iterrows(), total=self.poem_df.shape[0]):
+            predictions = []
+            diffs = []
+            idxs = []
+            for j, line in enumerate(row['rythm']):
+                
+                pred_meter, diff, idx = identify_meter(np.asarray(line),row['rythm_tok'][j])
+                predictions.append(pred_meter)
+                diffs.append(diff)
+                idxs.append(idx)
+            
+            predictions_lst.append(predictions)
+            diffs_lst.append(diffs)
+            idxs_lst.append(idxs)
+
+        self.poem_df['meter'] = predictions_lst
+        self.poem_df['meter_difference'] = diffs_lst
+        self.poem_df['insert/del idx'] = idxs_lst
+
 
 if __name__ == "__main__":  
-    path = 'data'
-    fname = 'rhyme_df.pkl'
-    fname_save = 'rythm_df_pred.csv'
-    fname_save_pkl = 'rythm_df_pred.pkl'
 
     parser = argparse.ArgumentParser()
     
 
     parser.add_argument("--data_dir", type=str,default='data',help="subdirectory for the input and output data")
     parser.add_argument("--fname_output", type=str,default='gutenberg_rythm_ano',help="filename of the output file")
-    parser.add_argument("--fname_input", type=str,default='gutenberg.csv',help="filename of the created file")
+    parser.add_argument("--fname_input", type=str,default='gutenberg_rythm_ano.pkl',help="filename of the created file")
     parser.add_argument("--text_column", type=str,default='text',help="name of the column that contains the texts")
     parser.add_argument("--save_every", type=int,default=10000,help="number of verses after which a checkpoint will be saved")
+    parser.add_argument("--load_checkpoint", type=str,default=None,help="filename of the checkpoint to load")
+    parser.add_argument("--task", type=str,default='annotate',help="filename of the checkpoint to load")
 
     args = parser.parse_args()
 
     annotation = Annotate_rythm(args)
-    annotation.annotate_rythm()
+
+    if args.task == 'annotate':
+        annotation.annotate_rythm()
+    else: 
+        annotation.identify()

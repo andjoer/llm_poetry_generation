@@ -1,13 +1,13 @@
 
-from transformers import pipeline
+#from transformers import pipeline
 from transformers import GPT2Tokenizer, GPT2LMHeadModel
 import torch
 import numpy as np
 import re
 import os
 import random
-from rythm import check_rythm
-from numba import cuda
+#from rythm import check_rythm
+#from numba import cuda
 
 from rythm_utils import extend_target_rythm, verse_cl
 
@@ -58,6 +58,11 @@ class LLM_class:
                 self.block_tokens.append(i)
         for i in range(10):
             self.block_tokens_num.append(self.tokenizer.encode(str(i)))
+
+class LLM_state():
+    def __init__(self,tokens,logits):
+        self.possible_tokens = tokens
+        self.possible_logits = logits
 
 
 
@@ -196,7 +201,7 @@ def get_num_ngram(sentence, N):
 
 def gpt_sample_systematic(verse,LLM,num_return_sequences = 100,loop_limit = 10000, num_words_remove = None, top_p = None,top_k = 20, temperature = 0.9,random_first = False, random_all = False,stop_tokens_alpha = [],block_non_alpha = True,
                         top_p_dict = {},pos=False,check_rythm = True, target_rythm = [],num_syll = None,num_syll_tollerance = 1,last_stress = None, trunkate_after = 100,pos_alternative = False,factor_stop_token=0.2,bigram_limit=2, trigram_limit = 1,
-                        dividable_rest=False, only_alpha_after = 3,allow_pos_match=False,repetition_penalty=1.2,invalid_verse_ends = []):
+                        dividable_rest=False, only_alpha_after = 3,allow_pos_match=False,repetition_penalty=1.2,invalid_verse_ends = [],return_last_state = False,last_state = None):
 
  
     if num_words_remove and type(verse) != str:
@@ -274,9 +279,12 @@ def gpt_sample_systematic(verse,LLM,num_return_sequences = 100,loop_limit = 1000
     sm = torch.nn.Softmax(dim = 1)
 
     
-
-    possible_tokens = []
-    possible_logits = []
+    if last_state:
+        possible_tokens = last_state.possible_tokens
+        possible_logits = last_state.possible_logits
+    else:
+        possible_tokens = []
+        possible_logits = []
 
     possible_combinations = []
     combination_logits = []
@@ -311,6 +319,9 @@ def gpt_sample_systematic(verse,LLM,num_return_sequences = 100,loop_limit = 1000
         for i in range(loop_limit): 
     
             if len(possible_tokens) > 0:
+
+                while not possible_logits[-1]:
+                    possible_tokens = possible_tokens[:-1]
                 try:
                     new_tokens =  torch.reshape(torch.IntTensor([tokens[-1] for tokens in possible_tokens]),(1,-1))
               
@@ -524,7 +535,12 @@ def gpt_sample_systematic(verse,LLM,num_return_sequences = 100,loop_limit = 1000
             if not possible_tokens[0]:
                 break
 
-    return [tokenizer.decode(combination) for combination in possible_combinations]
+    last_state = LLM_state(possible_tokens,possible_logits)
+
+    if return_last_state:
+        return [tokenizer.decode(combination) for combination in possible_combinations], last_state
+    else:
+        return [tokenizer.decode(combination) for combination in possible_combinations]
 
 if __name__ == "__main__":  
     LLM_2 = LLM_class('Anjoe/german-poetry-gpt2-large',device='cuda')

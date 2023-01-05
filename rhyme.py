@@ -29,7 +29,7 @@ def get_last_idx(word_lst_inp):
 
     return None
 
-def find_rhyme(args,verse_lst,idx1,idx2,LLM_perplexity,last_stress = -2, LLM='', LLM2 = None, return_alternatives=False):
+def find_rhyme(args,verse_lst,idx1,idx2,LLM_perplexity,last_stress = -2, LLM='', LLM2 = None, return_alternatives=False,force_rhyme=False):
     
     '''
     finds rhyming endings for two verses 
@@ -48,7 +48,7 @@ def find_rhyme(args,verse_lst,idx1,idx2,LLM_perplexity,last_stress = -2, LLM='',
     invalid_verse_ends = args.invalid_verse_ends
     repetition_penalty = args.repetition_penalty
 
-    min_dist = 0.04
+    min_dist = 0.01
     
 
     eol = True
@@ -83,7 +83,7 @@ def find_rhyme(args,verse_lst,idx1,idx2,LLM_perplexity,last_stress = -2, LLM='',
     for i in range(idx1+1,idx2+1):
         context_aft += ' '.join(verse_lst[i].text) + '\n'
 
-    bi_syns = bidirectional_synonyms(verse_lst[idx1],context_aft, target_rythm,LLM_perplexity) # alternatives for the first verse
+    bi_syns = bidirectional_synonyms(args,verse_lst[idx1],context_aft, target_rythm,LLM_perplexity) # alternatives for the first verse
 
     if verse_lst[idx1].text[-1].isalpha():
         last = -1
@@ -120,7 +120,7 @@ def find_rhyme(args,verse_lst,idx1,idx2,LLM_perplexity,last_stress = -2, LLM='',
         for i in range(idx2,len(verse_lst)):
             context_aft += ' '.join(verse_lst[i].text) + '\n'
 
-        syns_tmp = bidirectional_synonyms(verse_lst[idx1],context_aft, target_rythm,LLM_perplexity)
+        syns_tmp = bidirectional_synonyms(args,verse_lst[idx1],context_aft, target_rythm,LLM_perplexity)
 
         causal_syns = []
 
@@ -344,6 +344,8 @@ def find_rhyme(args,verse_lst,idx1,idx2,LLM_perplexity,last_stress = -2, LLM='',
         verse_lst[idx2] = verse_cl(causal_selection)
     else: 
         print('no rhyme found')
+        if force_rhyme:
+            return verse_lst[:-1]
     if return_alternatives == False: 
         return verse_lst
 
