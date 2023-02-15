@@ -63,7 +63,7 @@ class verse_cl():
             self.text = text
 
         else:
-            self.text = re.findall(r"[\w']+|[.,!?;]", text)
+            self.text = re.findall(r"[\w']+|[.,!?;:]", text)
         self.last_sign = ''
 
         self.token_pos = []
@@ -72,6 +72,7 @@ class verse_cl():
         #self.get_rythm_sent()       
         #self.update_token_dict()
         self.context = ''
+        self.context_after = ''
         
         
     def shorten(self,idx):
@@ -197,7 +198,79 @@ def get_rythm(word_ortho):
         rythm = [2]
     return rythm
 
+def get_start_idx (list_lists):
+    starts = []
+    start = 0
+    for lst in list_lists: 
+        starts.append(start)
+        start += len(lst)
 
+    return starts
+
+def get_meter_difference(verse,target_rythm):
+    rythm = verse.rythm
+
+    rythm = np.asarray(rythm)
+    target_rythm_ext = np.asarray(extend_target_rythm(rythm,target_rythm))
+
+    comp = np.abs((target_rythm_ext-rythm) * (rythm != 0.5))
+
+    return np.sum(comp)
+
+def rate_candidate_meter(verse, target_rythm):
+    rythm = verse.rythm
+    len_target = len(target_rythm)
+    target_rythm_ext = np.asarray(extend_target_rythm(rythm,target_rythm)+target_rythm)
+    opt_shift = 0
+    comps = []
+    correct_scores_lst = []
+    for i in range(len(target_rythm)):
+
+        comp = np.abs(rythm - target_rythm_ext[i:i-len_target or None])
+        
+       
+        comp = comp * (rythm != 0.5)
+
+        comps.append(comp)
+   
+        correct = np.where(comp == 0)[0]
+
+        correct_clusters = (np.split(correct, np.where(np.diff(correct) != 1)[0]+1))
+
+        correct_scores = np.zeros(comp.shape[0])
+
+        for cluster in correct_clusters:
+          
+            correct_scores[cluster] = cluster.shape[0]
+
+        correct_scores_lst.append(correct_scores)
+
+    comp_0 = comps[0]
+    correct_scores_0 = correct_scores_lst[0]
+    chosen = np.zeros(comp_0.shape[0])
+    for i, comp in enumerate(comps[1:]):
+        chosen[np.logical_and(comp < comp_0, correct_scores_lst[i+1] >= correct_scores_0)] =  i + 1
+        correct_scores_0[chosen == i+1] = correct_scores_lst[i+1][chosen == i+1]
+        comp_0[chosen == i+1] = comp[chosen == i+1]
+        
+    splits = (np.where(np.diff(chosen) != 0)[0]+1)
+
+    start_idx = np.asarray(get_start_idx(verse.rythm_tokens))
+    final_output = np.zeros(comp_0.shape[0])
+    if splits.size != 0: 
+        idx_0 = 0
+        for i in splits:
+            idx = np.amin(start_idx[start_idx >= i])
+            final_output[idx_0:idx] = comps[int(chosen[i-1])][idx_0:idx]
+            idx_0 = idx
+
+    else: 
+        final_output = comps[int(chosen[0])]
+
+    error_rythm = np.sum(final_output)
+    error_split = splits.shape[0]
+
+    return error_rythm, error_split, splits, chosen[0]
 
 def hyphenate_word(word):
 

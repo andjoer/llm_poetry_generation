@@ -6,6 +6,8 @@ import numpy as np
 import re
 import os
 import random
+
+from tqdm import tqdm
 #from rythm import check_rythm
 #from numba import cuda
 
@@ -64,10 +66,19 @@ class LLM_state():
         self.possible_tokens = tokens
         self.possible_logits = logits
 
+    def __len__(self):
+        return len(self.possible_tokens[0])
+
+    def trunkate(self):
+        self.possible_tokens = [self.possible_tokens[0][:-1]]
+        self.possible_logits = [self.possible_logits[0][:-1]]
 
 
-def gpt2(input_text,LLM, max_length= 10, num_return_sequences=5,stop=['\n'],repetition_penalty = 1.15,top_p = 1,temperature = 0.8, block_linebreak = False):
 
+def gpt2(input_text,LLM, max_length= 10, num_return_sequences=5,stop=['\n'],repetition_penalty = 1.15,top_p = 1,temperature = 0.8, block_linebreak = False,replace_linebreaks=False):
+
+    if replace_linebreaks:
+        input_text = re.sub('\n',' ',input_text).strip()
     input_ids = LLM.tokenizer.encode(input_text,return_tensors='pt').to(LLM.device)
     max_length += input_ids.size(1)
     
@@ -199,16 +210,20 @@ def get_num_ngram(sentence, N):
     return n_grams.count(n_grams[-1])
 
 
-def gpt_sample_systematic(verse,LLM,num_return_sequences = 100,loop_limit = 10000, num_words_remove = None, top_p = None,top_k = 20, temperature = 0.9,random_first = False, random_all = False,stop_tokens_alpha = [],block_non_alpha = True,
+def gpt_sample_systematic(args,verse,LLM,num_return_sequences = 100,loop_limit = 15000, num_words_remove = None, top_p = None,top_k = 25,top_k_0 = 0, temperature = 0.9,random_first = False, random_all = False,stop_tokens_alpha = [],block_non_alpha = True,
                         top_p_dict = {},pos=False,check_rythm = True, target_rythm = [],num_syll = None,num_syll_tollerance = 1,last_stress = None, trunkate_after = 100,pos_alternative = False,factor_stop_token=0.2,bigram_limit=2, trigram_limit = 1,
-                        dividable_rest=False, only_alpha_after = 3,allow_pos_match=False,repetition_penalty=1.2,invalid_verse_ends = [],return_last_state = False,last_state = None):
+                        dividable_rest=False, only_alpha_after = 3,allow_pos_match=False,repetition_penalty=1.2,invalid_verse_ends = [],return_last_state = False,last_state = None,replace_linebreaks = False):
 
     '''
     builds a stack of possible tokens and filtered by a specific top_p values and goes through all of them
     
     '''
-
  
+    if type(verse) != str:
+        check_vocab = False
+    else:
+        check_vocab = True
+
     if num_words_remove and type(verse) != str:
         input_text, idx = get_input_text(verse,num_words_remove)
         prompt = verse.context + '\n' + input_text
@@ -228,6 +243,8 @@ def gpt_sample_systematic(verse,LLM,num_return_sequences = 100,loop_limit = 1000
         reff_verse = None
         prompt = verse
 
+    if replace_linebreaks:
+        prompt = re.sub('\n',' ',prompt).strip()
 
     if num_words_remove and not top_p:
         top_p_vs_num_words = {1:0.8,2:0.7,3:0.6}
@@ -320,17 +337,27 @@ def gpt_sample_systematic(verse,LLM,num_return_sequences = 100,loop_limit = 1000
         print(target_rythm)
         
         print(reff_verse.rythm)'''
+
     with torch.no_grad():
-        for i in range(loop_limit): 
+        for i in tqdm(range(loop_limit)): 
     
             if len(possible_tokens) > 0:
 
-                while not possible_logits[-1]:
+                while not possible_tokens[-1]:
                     possible_tokens = possible_tokens[:-1]
+                    possible_logits = possible_logits[:-1]
+
+                    if not possible_tokens:
+                        break
+
+                if not possible_tokens:
+                    break
+
                 try:
                     new_tokens =  torch.reshape(torch.IntTensor([tokens[-1] for tokens in possible_tokens]),(1,-1))
               
                 except: 
+
                     print('possible tokens')
                     print(possible_tokens)
                     raise Exception
@@ -374,6 +401,7 @@ def gpt_sample_systematic(verse,LLM,num_return_sequences = 100,loop_limit = 1000
             complete_text = re.sub(r'[^A-Za-zÄÖÜäöüß ]', ' ',tokenizer.decode(input_tokens[0,-12:]))
 
             sentence = generated.split()
+            
 
             if generated and (((pos or check_rythm or target_rythm) and (len(last_token_test.split()) > 1) or torch.argmax(logits) in stop_tokens or not tokenizer.decode(torch.argmax(logits)).isalpha())):
                 fulfill_requirements = True
@@ -381,7 +409,15 @@ def gpt_sample_systematic(verse,LLM,num_return_sequences = 100,loop_limit = 1000
                 last_word_start = len(possible_tokens)
                 generated_verse = verse_cl(generated)
                
-                
+                if args.vocab and check_vocab:
+                    if args.check_vocab_all: 
+                        idx_check = -1
+                    else: 
+                        idx_check = 0
+
+                    if generated_verse.text[idx_check].lower() not in args.vocab: 
+                        fulfill_requirements = False
+
                 if num_words_remove and generated[0] != ' ':
                     fulfill_requirements = False
 
@@ -495,7 +531,7 @@ def gpt_sample_systematic(verse,LLM,num_return_sequences = 100,loop_limit = 1000
                 if len(possible_tokens) == 1:
                     depth_lst = []
                                 
-            elif ((stop_tokens and list(set(stop_tokens) & set(top_p_stop_token_list))) or pos_match_end or len(sentence) == max_word_count or (pos_alternative and fulfill_pos)) and possible_end:
+            elif ((stop_tokens and list(set(stop_tokens) & set(top_p_stop_token_list))) or pos_match_end  or (pos_alternative and fulfill_pos)) and possible_end:
                 #print(tokenizer.decode([tokens[-1].item() for tokens in possible_tokens]))
                 '''print('rythm in generation function')
                 print(generated_verse.text)
@@ -503,7 +539,12 @@ def gpt_sample_systematic(verse,LLM,num_return_sequences = 100,loop_limit = 1000
                 print(generated_verse.token_pos)'''
 
                 depth_lst = []
-                possible_combinations.append([tokens[-1].item() for tokens in possible_tokens])
+
+                sign = [token for token in top_p_stop_token_list if token in stop_tokens]
+
+                if sign:
+                    sign = [sign[0]]
+                possible_combinations.append([tokens[-1].item() for tokens in possible_tokens] + sign)
      
                 last_logits_sum = sum([logits[-1].item() for logits in possible_logits])
                 combination_logits.append(last_logits_sum)
@@ -515,9 +556,10 @@ def gpt_sample_systematic(verse,LLM,num_return_sequences = 100,loop_limit = 1000
 
             elif fulfill_requirements:
 
-                if len(possible_tokens) == 0 and len(indices_sorted[token_inside_top_p])  < top_k:
-                    indices_filtered = torch.flip(indices_sorted[0,:top_k],dims=[-1])    # highest probability last so it gets accessed first
-                    logits_filtered = torch.flip(logits_sorted[0,:top_k],dims=[-1])           
+                if len(possible_tokens) == 0 and (len(indices_sorted[token_inside_top_p])  < top_k or top_k_0 > 0):
+                    print(top_k_0)
+                    indices_filtered = torch.flip(indices_sorted[0,top_k_0:top_k],dims=[-1])    # highest probability last so it gets accessed first
+                    logits_filtered = torch.flip(logits_sorted[0,top_k_0:top_k],dims=[-1])           
             
                 else:
                     indices_filtered = torch.flip(indices_sorted[token_inside_top_p],dims=[-1])    # highest probability last so it gets accessed first

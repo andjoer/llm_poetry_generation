@@ -6,7 +6,7 @@ from copy import copy
 
 #from rythm import check_rythm
 
-from rythm_utils import extend_target_rythm, verse_cl
+from rythm_utils import extend_target_rythm, verse_cl, rate_candidate_meter
 from gpt3 import gpt3
 
 from gpt2 import gpt2, gpt_sample_systematic, get_input_text, clean_word, LLM_class 
@@ -18,6 +18,8 @@ jambus = [0,1]
 
 from transformers import pipeline
 from transformers import GPT2Tokenizer, GPT2LMHeadModel
+
+
 
 def modify_verse(args,verse,LLM_2,num_remove = 1):
     '''
@@ -38,7 +40,8 @@ def modify_verse(args,verse,LLM_2,num_remove = 1):
         num_return_sequences = 120
     else: 
         num_return_sequences = 1
-    new_sent = gpt_synonyms(verse,target_rythm,num_remove=num_remove, use_pos = True,eol = False,LLM = LLM_2,num_return_sequences=num_return_sequences,top_p_dict =top_p_dict,top_p=top_p,temperature=temperature)
+    new_sent = gpt_synonyms(verse,target_rythm,num_remove=num_remove, use_pos = True,eol = False,LLM = LLM_2,num_return_sequences=num_return_sequences,top_p_dict =top_p_dict,top_p=top_p,temperature=temperature,
+            replace_linebreaks=args.replace_linebreaks)
 
     new_words = new_sent[-1].split()[-num_remove:]
    
@@ -52,30 +55,65 @@ def modify_verse(args,verse,LLM_2,num_remove = 1):
     print(' '.join(verse.text))   
     return verse
 
+def compare_meter(verse,target_rythm,num_syll):
+    rythm = verse.rythm
 
-'''def clean_word(word):
-    return re.sub('[^a-zäöüß]', '', word.lower())
+    rythm = np.asarray(rythm)
+    target_rythm_ext = np.asarray(extend_target_rythm(rythm,target_rythm))
+
+    comp = np.abs((target_rythm_ext-rythm) * (rythm != 0.5))
+
+    return np.sum(comp) == 0 and len(rythm) <= num_syll
+
+def iterate_verse(args,input_text,verse_idx,num_syll):
+
+    target_rythm = args.target_rythm
+    verse_text =  input_text.split('\n')[verse_idx]
+    verse = verse_cl(verse_text)
+    error_rythm, error_split, splits, chosen = rate_candidate_meter(verse, target_rythm)
+    candidates = [verse_text]
+    candidate_errors = [error_split+error_rythm]
+    if compare_meter(verse,target_rythm,num_syll):
+        return verse_text
+
+    for i in range(7):
+        
+        prompt = '\"' + input_text + '\"\n'
+        if i < 5:
+            prompt_change = f'''ersetze in obigem Gedicht den Vers \"{verse_text}\" durch eine Alternative mit ähnlicher Bedeutung, aber mit zum Teil veränderten Worten! Verändere nur diesen einen Vers! Stelle sicher, dass er zum nachfolgenden Vers passt!'''
+        else: 
+            prompt_change = f'''ersetze in obigem Gedicht den Vers \"{verse_text}\" durch eine Alternative mit ähnlicher Bedeutung, verändere die Stellung der Worte im Vers bei gleichbleibender Bedeutung! Ändere dann manche Worte bei ähnlicher Bedeutung! Verändere nur diesen einen Vers! Stelle sicher, dass er zum nachfolgenden Vers passt!'''
+        prompt += prompt_change
+        alternatives = gpt3(prompt,0)
+
+        for alternative in alternatives:
+            
+            lines = alternative.strip().split('\n')
+            if len(lines) == 1:
+                sentence = lines[0]
+                if sentence: 
+                    verse_new = verse_cl(sentence.strip())
+                    try:
+                        error_rythm, error_split, splits, chosen = rate_candidate_meter(verse_new, target_rythm)
+                    except: 
+                        error_split = 100 
+                    candidates.append(sentence.strip())
+                    candidate_errors.append(error_split+error_rythm)
+                    print('alternative verse:')
+                    print(sentence.strip())
+                    print('rythm of alternative verse:')
+                    print(verse_new.rythm)
+                    if compare_meter(verse_new,target_rythm,num_syll):
+                        return sentence.strip()
     
-def get_input_text(verse,num_words_remove):
-    input_text = ''
+    candidate_errors = np.asarray(candidate_errors)
+    best_values = np.amin(candidate_errors)
 
-    if num_words_remove:
-        idx_out = 0
-        idx = 1
-        while idx <= num_words_remove :
-            if len(clean_word(verse.text[-idx])) > 1:
-                idx_out += 1
-            idx += 1
-        input_text = verse.text[:-idx_out]
-        input_text = ' '.join(input_text)
-    else:
-        input_text = ''
-    input_text_cont = verse.context + '\n' + input_text
+    best_candidate = np.where(candidate_errors == best_values)[0][0]
 
-    return input_text_cont,idx_out'''
+    return (candidates[best_candidate])
 
-
-def gpt_poet(args,input_text, num_syll,title_accepted, LLM = None,LLM_2=None,last_state = None):
+def gpt_poet(args,input_text, num_syll,title_accepted, LLM = None,LLM_2=None,last_state = None,top_k_0 = 0, iteration = 0):
 
     '''
     generate a new verse with a matching metrum
@@ -95,6 +133,7 @@ def gpt_poet(args,input_text, num_syll,title_accepted, LLM = None,LLM_2=None,las
     invalid_verse_ends = args.invalid_verse_ends
     repetition_penalty = args.repetition_penalty
 
+    top_k = top_k_0 + 20
     last_state_out = None
 
     len_past = 450
@@ -121,6 +160,7 @@ def gpt_poet(args,input_text, num_syll,title_accepted, LLM = None,LLM_2=None,las
     last_replaced = 0 
     last_stress = None
     top_p_current = top_p
+    replaced_a_word = False
     while True:
 
         if cnt % 4 == 0:                                # if there are more then 4 tries, start again
@@ -131,8 +171,8 @@ def gpt_poet(args,input_text, num_syll,title_accepted, LLM = None,LLM_2=None,las
             last_replaced = 0
             block_linebreak = False
             
-        if cnt > 9:                                     # if there are more then 10 tries, stop the complete poem
-            return '**', _
+        if sampling != 'systematic' and cnt > 9:                                     # if there are more then 10 tries, stop the complete poem
+            return '**', None, top_k_0
 
         cnt += 1
         
@@ -144,25 +184,29 @@ def gpt_poet(args,input_text, num_syll,title_accepted, LLM = None,LLM_2=None,las
             target_rythm_shifted = list(np.roll(np.asarray(target_rythm),rythm_shift))
             print('syllable count tollerance: ' + str(num_syll_tollerance))
             print('top p value: ' + str(top_p_current))
-
+            print('top k value: ' + str(top_k))
             if current_num_syll > 0:
                 random_first = False
 
-            generated, last_state_out = gpt_sample_systematic(input_text_new,LLM,num_return_sequences = 1,top_p = top_p_current,top_k = 20, temperature = temperature,random_first = random_first, random_all = random_all,stop_tokens_alpha = stop_tokens,block_non_alpha = False,
+            generated, last_state_out = gpt_sample_systematic(args,input_text_new,LLM,num_return_sequences = 1,top_p = top_p_current,top_k = top_k,top_k_0 = top_k_0, temperature = temperature,random_first = random_first, random_all = random_all,stop_tokens_alpha = stop_tokens,block_non_alpha = False,
                                                 num_syll=pending_syllables,target_rythm=target_rythm_shifted, last_stress=last_stress,num_syll_tollerance=num_syll_tollerance,trunkate_after = trunkate_after,dividable_rest=dividable_rest,
-                                                only_alpha_after = only_alpha_after,invalid_verse_ends=invalid_verse_ends,repetition_penalty=repetition_penalty,return_last_state=True, last_state=last_state)
+                                                only_alpha_after = only_alpha_after,invalid_verse_ends=invalid_verse_ends,repetition_penalty=repetition_penalty,return_last_state=True, last_state=last_state,replace_linebreaks=args.replace_linebreaks)
 
             if generated:
                 top_p_current = top_p
+                
             else: 
-                top_p_current += 0.1
-
+                top_p_current += 0.02
+                top_k_0 = top_k
+                last_state_out = None
+                top_k += 20
+                num_syll_tollerance -= 0.1
                 if top_p_current > 1:
-                    return '**', _
+                    return '**', None, top_k_0
 
         else:
 
-            generated = LLM_poet(input_text_new, LLM, max_length= 20,num_return_sequences=20,repetition_penalty = repetition_penalty,top_p = top_p,temperature = temperature,block_linebreak=block_linebreak) # generate from the prompt
+            generated = LLM_poet(input_text_new, LLM, max_length= 20,num_return_sequences=20,repetition_penalty = repetition_penalty,top_p = top_p,temperature = temperature,block_linebreak=block_linebreak,replace_linebreaks=args.replace_linebreaks) # generate from the prompt
 
 
         candidates_ends = []
@@ -177,7 +221,7 @@ def gpt_poet(args,input_text, num_syll,title_accepted, LLM = None,LLM_2=None,las
             for line_tmp in lines:
                 if 'titel' in line_tmp[:10].lower():          # if the line begins with "titel"
                         if title_accepted:
-                            return '##'+line_tmp
+                            return '##'+line_tmp, None, top_k_0
 
                         break
 
@@ -244,12 +288,18 @@ def gpt_poet(args,input_text, num_syll,title_accepted, LLM = None,LLM_2=None,las
 
                 if len(rythm) > 0:         # rythm has [-1]
 
-                    if np.sum(comp) == 0 and len(rythm) <= num_syll and len(rythm) >= num_syll*num_syll_tollerance and ((num_syll - len(rythm))%len(target_rythm) == 0 or not dividable_rest) and (not invalid_verse_ends or verse.token_pos not in invalid_verse_ends): # if the resulting verse is long enough: finsihed (rythm[-1] == last or rythm[-1] == 0.5)
+                    if np.sum(comp) == 0 and len(rythm) <= num_syll and (len(rythm) >= num_syll*num_syll_tollerance or sampling == 'systematic') and ((num_syll - len(rythm))%len(target_rythm) == 0 or not dividable_rest) and (not invalid_verse_ends or verse.token_pos not in invalid_verse_ends): # if the resulting verse is long enough: finsihed (rythm[-1] == last or rythm[-1] == 0.5)
 
                         if need_replacement:
                             last_state_out = None
                             verse = modify_verse(args, verse,LLM_2,num_remove=num_remove)
-                        return re.sub('[.].','',' '.join(verse.text)) + '\n', last_state_out
+
+                        if last_state_out is not None:
+                            if len(last_state_out) == 0 and not replaced_a_word: 
+                                top_k_0 = top_k
+                                top_k += 20
+    
+                        return re.sub('[.].','',' '.join(verse.text)) + '\n', last_state_out, top_k_0
                
 
         if candidates and (LLM != 'GPT3' or LLM_2):
@@ -272,120 +322,14 @@ def gpt_poet(args,input_text, num_syll,title_accepted, LLM = None,LLM_2=None,las
         else:                                                           # gpt3 has a problem with continuing started lines; it would be necessary to block '\n'-token at the beginning 
             block_linebreak = False
             new_text = ''
-            num_syll_tollerance -= 0.2
+            num_syll_tollerance -= 0.05
             if num_syll_tollerance <= 0.2:
-                return '**', None
+                return '**', None, top_k_0
 
 
-            
-def gpt_poet_analysis(input_text, target_rythm,num_syll,require_last=False,num_branches = 20, tollerance = 4,LLM = 'GPT2-large'):
-    '''
-    generate a new verse with a matching metrum and return statistics
-    returning a verse with correct last stress is not required in this experiment
-    '''
-    len_past = 450
-    if LLM == 'GPT2-large':
-        LLM_poet = gpt2
 
-    elif LLM == 'GPT2-large_beam':
-        LLM_poet = gpt2_beam
-
-    elif LLM == 'GPT2-large_top_p':
-        LLM_poet = gpt2_top_p
-
-    elif LLM == 'GPT3':
-        LLM_poet = gpt3
-        len_past = 1000
-
-    else:
-        print('invalid LLM selection, will use gpt2')
-        LLM_poet = gpt2
-
-    new_text = ' '
-    last = (num_syll-1)%len(target_rythm)
-
-    cnt = 0
-
-    print('start generating')
-    generated_tokens = 0
-    rythm_comp = [0]
-    while True:
-
-        if cnt % 4 == 0:                                # if there are more then 4 tries, start again
-            input_text_new = input_text[-len_past:]
-            input_text_title = input_text[-len_past:]
-            
-        if cnt > 15:                                     # if there are more then 10 tries, stop the complete poem
-            return generated_tokens, False
-
-        cnt += 1
-        
-        generated = LLM_poet(input_text_new, max_length= 20,num_return_sequences=num_branches) # generate from the prompt
-
-        generated_tokens += 20*num_branches          # add the number of all output tokens
-        candidates_ends = []
-        candidates = []
-
-        if num_syll - len(rythm_comp) > 2:
-            min_len = 2
-
-        for text in generated:
-            
-            
-
-            lines = text.split('\n')         # only one verse, so cut the rest from the generation
-        
-            idx_0 = -1
-            line = ''
-            
-            for line_tmp in lines:
-               
-                if len(line_tmp.split()) > min_len:      
-                        line = line_tmp.strip()
-                        break
-
-            if line:                   # if a valid verse was created
-                
-                verse = verse_cl(new_text + line)
-                rythm = np.asarray(verse.rythm)
-                target_rythm_ext = np.asarray(extend_target_rythm(rythm,target_rythm))
-            
-                comp = np.abs((target_rythm_ext-rythm) * (rythm != 0.5))
-
-                enter_idx = len(verse.text)
-
-                if np.sum(comp) != 0:
-                    problem_idx = np.amin(np.where(comp != 0)[0])            # where to cut the verse since the metrum gets incorrect
-                    token_idx = verse.token_dict[problem_idx]
-
-                else:
-                    token_idx = 20
-
-                if token_idx <= enter_idx and verse.token_ends[-1] < num_syll - 3:
-
-                    candidates.append(' '.join(verse.text[:token_idx]))                 
-                    candidates_ends.append(token_idx)
-                    rythm_comp = rythm                     
-                    
-                if len(rythm) > 0:     
-                    if require_last:
-                        last_correct = (rythm[-1] == last)      
-                    else: 
-                        last_correct = True
-                                                                                            # rythm has no [-1]
-                    if np.sum(comp) == 0 and last_correct and len(verse.rythm) <= num_syll and len(verse.rythm) >= num_syll*0.65: # if the resulting verse is long enough: finished // for analysis last stress is not mandatory
-
-                        return generated_tokens, re.sub('[.].','',' '.join(verse.text[:token_idx])) + '\n'
-               
-
-        if candidates:
-            best_idx = np.argmax(np.asarray(candidates_ends))           # choose the candidate that is the longest
-
-            new_text +=  candidates[best_idx] + ' '
-            input_text_new = input_text_title + ' '+ new_text 
-
-def gpt_synonyms(verse,target_rythm,num_remove=2, max_length = 10, LLM=None, eol = False,use_pos = False, elastic = False,num_return_sequences=150,top_p_dict = {},top_p = 0.5,temperature = 0.9,top_k=20,
-                stop_tokens=['\n','.','!','?',','],allow_pos_match=False,invalid_verse_ends=[],repetition_penalty= 1):
+def gpt_synonyms(args,verse,target_rythm,num_remove=2, max_length = 10, LLM=None,eol = False,use_pos = False, elastic = False,num_return_sequences=150,top_p_dict = {},top_p = 0.5,temperature = 0.9,top_k=20,
+                stop_tokens=['\n','.','!','?',','],allow_pos_match=False,invalid_verse_ends=[],repetition_penalty= 1,replace_linebreaks=False):
 
     if type(LLM) != str:
         if LLM.sampling == 'systematic':
@@ -399,21 +343,21 @@ def gpt_synonyms(verse,target_rythm,num_remove=2, max_length = 10, LLM=None, eol
         verse_text, _ = get_input_text(verse,num_remove)
         if not eol:
             stop_tokens = None
-        outputs = gpt_sample_systematic(verse,LLM,num_return_sequences=num_return_sequences, num_words_remove = num_remove,pos=use_pos,check_rythm = True, target_rythm = target_rythm,top_p_dict=top_p_dict,stop_tokens_alpha=stop_tokens,
-                                            temperature=temperature,top_p=top_p,top_k = top_k,allow_pos_match=allow_pos_match,invalid_verse_ends=invalid_verse_ends,repetition_penalty=repetition_penalty)
+        outputs = gpt_sample_systematic(args,verse,LLM,num_return_sequences=num_return_sequences, num_words_remove = num_remove,pos=use_pos,check_rythm = True, target_rythm = target_rythm,top_p_dict=top_p_dict,stop_tokens_alpha=stop_tokens,
+                                            temperature=temperature,top_p=top_p,top_k = top_k,allow_pos_match=allow_pos_match,invalid_verse_ends=invalid_verse_ends,repetition_penalty=repetition_penalty, replace_linebreaks=replace_linebreaks)
         lines = [verse_text + output for output in outputs]
         if not lines: 
             lines = [' '.join(verse.text)]
     else: 
         lines = gpt_sample_synonyms(verse,target_rythm,num_remove=num_remove, max_length = max_length, LLM=LLM, eol = eol, use_pos = use_pos, elastic = False,num_return_sequences=num_return_sequences,allow_pos_match=allow_pos_match,
-        invalid_verse_ends=invalid_verse_ends,repetition_penalty=repetition_penalty,top_p=top_p,temperature=temperature)
+                                    invalid_verse_ends=invalid_verse_ends,repetition_penalty=repetition_penalty,top_p=top_p,temperature=temperature,replace_linebreaks=replace_linebreaks)
 
     return lines
 
 
 
 def gpt_sample_synonyms(verse,target_rythm,num_remove=2, max_length = 10, LLM=None, eol = True, use_pos = True, elastic = False,num_return_sequences=150,allow_pos_match = False,invalid_verse_ends=[],
-                        repetition_penalty=1,top_p = 1,temperature = 0.9):
+                        repetition_penalty=1,top_p = 1,temperature = 0.9,replace_linebreaks=False):
 
     '''
     create alternative Verse endings
@@ -448,10 +392,10 @@ def gpt_sample_synonyms(verse,target_rythm,num_remove=2, max_length = 10, LLM=No
         
     if type(LLM) != str:
 
-        generated = gpt2(input_text_cont, LLM, max_length=10,num_return_sequences=num_return_sequences,repetition_penalty=repetition_penalty,top_p = top_p,temperature = temperature)
+        generated = gpt2(input_text_cont, LLM, max_length=10,num_return_sequences=num_return_sequences,repetition_penalty=repetition_penalty,top_p = top_p,temperature = temperature,replace_linebreaks=replace_linebreaks)
 
     elif LLM == 'GPT3':
-        generated = gpt3(input_text_cont, LLM, max_length=max_length,num_return_sequences=128,repetition_penalty=repetition_penalty,top_p = top_p,temperature = temperature)
+        generated = gpt3(input_text_cont, LLM, max_length=max_length,num_return_sequences=128,repetition_penalty=repetition_penalty,top_p = top_p,temperature = temperature,replace_linebreaks=replace_linebreaks)
     else:
         raise Exception('invalid LLM selection')
     
@@ -523,9 +467,16 @@ def gpt_sample_synonyms(verse,target_rythm,num_remove=2, max_length = 10, LLM=No
 
 if __name__ == "__main__":  
 
-    default_llm = 'Anjoe/Bundestag-gpt2-large'
-    verse = verse_cl('in Richtung Bürgergeld ab Seite')
+    poem = '''Ja wer wird denn gleich verzweifeln,
+        weil er klein und laut und dumm ist?
+        Jedes Leben endet. Leb so,
+        daß du, wenn dein Leben um ist
 
-    LLM = LLM_class('Anjoe/Bundestag-gpt2-large',device='cuda')
+        von dir sagen kannst: Na wenn schon!
+        Ist mein Leben jetzt auch um,
+        habe ich doch was geleistet:
+        ich war klein und laut und dumm.'''
 
-    modify_verse(verse,LLM,[0,1])
+    args = 0
+
+    print(iterate_verse(args,poem,2,[0,1])  ) 

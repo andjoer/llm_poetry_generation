@@ -30,7 +30,7 @@ prompt_4 = ['''Wodurch gibt sich der Genius kund? Wodurch sich der Schöpfer
 Kund gibt in der Natur, in dem unendlichen All:
 Klar ist der Äther und doch von unermeßlicher Tiefe;
 Offen dem Aug, dem Verstand bleibt er doch ewig geheim.
-''',[12,13],trochee]
+''',[12,14],trochee]
 
 # Johannes Daniel Falk An das Nichts
 prompt_5 = ['''Selbst philosophische Systeme –
@@ -51,7 +51,7 @@ Am Sein erhalte dich beglückt!
 Das Sein ist ewig: denn Gesetze
 Bewahren die lebendgen Schätze,
 Aus welchen sich das All geschmückt.
-''',[9,10],jambus]
+''',[9,11],jambus]
 
 # Johann Wolfgang von Goethe Parabase
 prompt_7 = ['''Freudig war, vor vielen Jahren,
@@ -74,7 +74,7 @@ Verspottet, sich auf's Knie, um morgen wieder
 Es zu zertrümmern, dann aufs neu die Trümmer
 Zu sammeln, es auf den Altar zurück
 Zu setzen, es mit Weihrauch zu bequalmen!
-''',[10,11],jambus]
+''',[10,12],jambus]
 
 # Friedrich Hebbel Philosophenschicksal
 prompt_9 = ['''Salomons Schlüssel glaubst du zu fassen und Himmel und Erde
@@ -107,7 +107,7 @@ von dir sagen kannst: Na wenn schon!
 Ist mein Leben jetzt auch um,
 habe ich doch was geleistet:
 ich war klein und laut und dumm.
-''',[8,9],trochee]
+''',[8,10],trochee]
 
 # Robert Gernhardt, Ach!
 prompt_13 =['''Woran soll es gehn? Ans Sterben?
@@ -119,7 +119,7 @@ Interessant so eine Sanduhr!
 Ja, die halt ich gern mal fest.
 Ach – und das ist Ihre Sense?
 Und die gibt mir dann den Rest?
-''',[9,8],trochee]
+''',[10,8],trochee]
 
 # Antonio Cho
 prompt_14 = ['''Gibt es einen Dadageist?
@@ -133,6 +133,6 @@ das große Lachen
 ''',[10,9],jambus]
 
 prompt_15 = ['''über den Feldhamster Karl und den Philosophen Kant:
-''',[9,8],trochee]
+''',[10,8],trochee]
 
 prompts = [prompt_2,prompt_3,prompt_5,prompt_7,prompt_8,prompt_10,prompt_11,prompt_12,prompt_13]

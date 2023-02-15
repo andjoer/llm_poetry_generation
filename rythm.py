@@ -267,12 +267,16 @@ def fix_shifted_rythm(args,verse,target_rythm,LLM_perplexity, len_window = 6,tar
 
 def extend_verse(args,verse,target_rythm,target_len,LLM_perplexity): # extend the verse
 
+    context = verse.context
+    context_after = verse.context_after
+
     while len(verse.rythm) <= (target_len-len(target_rythm)):                   # if len(rythm) is larger then target_len minus length of the target rythm no word with rythm = target_rythm would fit in                
         target_rythm_ext = extend_target_rythm(verse.rythm,target_rythm)
         fill_words = []
         perplexities = []
         text = []
         cut = None
+        
         if not verse.doc[-1].is_alpha: # if the last token is not a letter 
             cut = -1
         for token_idx, token in enumerate(verse.doc[:cut]):  # for every token try to fill a word in front of it
@@ -292,6 +296,8 @@ def extend_verse(args,verse,target_rythm,target_len,LLM_perplexity): # extend th
    
         #verse.text = ' '.join(text)
         verse = verse_cl(text)
+        verse.context = context
+        verse.context_after = context_after
         print('text:')
         print(' '.join(verse.text))
         print('rythm:')
@@ -358,6 +364,8 @@ def extend_verse(args,verse,target_rythm,target_len,LLM_perplexity): # extend th
 
         #verse.text = ' '.join(text)
         verse = verse_cl(text)  
+        verse.context = context
+        verse.context_after = context_after
         print('text:')
         print(' '.join(verse.text))
         print('rythm:')
@@ -847,6 +855,8 @@ def fix_rythm(args,verse,target_rythm,num_syllabs,LLM_perplexity):
     target_rythm: the metrum 
     num_syllabs: number of syllables the verse should have
     '''
+    context = verse.context
+    context_after = verse.context_after
 
     num_rm = len(verse.rythm) - num_syllabs
 
@@ -877,14 +887,15 @@ def fix_rythm(args,verse,target_rythm,num_syllabs,LLM_perplexity):
             combs = remove_token(verse,num_rm)                    # get possible combinations of words that could be removed
             if combs: 
                 verse = find_opt_rythm(verse,combs,target_rythm,LLM_perplexity)      # find the metrically best option
-        verse = fix_shifted_rythm(args,verse,target_rythm, LLM_perplexity, target_len = num_syllabs)    # correct metrically incorrect syllables
+        verse = fix_shifted_rythm(args,verse,target_rythm, LLM_perplexity, target_len = num_syllabs)    # fix metrically incorrect syllables
         print(verse.text)
         difference = compare_verse_rythm(verse,target_rythm)
         num_rm_0 = num_rm
         print(difference)
         count += 1
 
-   
+    verse.context = context
+    verse.context_after = context_after
 
     if len(verse.rythm)  < num_syllabs:
         print('enter extension')

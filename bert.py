@@ -43,29 +43,36 @@ def get_synonyms_cand(args,verse,tok_id,target_rythms, LLM_perplexity, adaptive=
         device = 0
     else: 
         device = -1
-    unmasker = pipeline('fill-mask', model = args.bidirectional_model, top_k = top_k,framework='pt',device = device)
+    unmasker = pipeline('fill-mask', model = args.bidirectional_model[0], top_k = top_k,framework='pt',device = device)
+
+    if not verse.text[-1].isalpha():
+        sign = verse.text[-1]
+    else: 
+        sign = ''
+
+
     if tok_id > -1:
         for token in verse.doc:
             if token.i != tok_id:
                 text += token.text + ' '
             elif token.i == tok_id and not after:
-                text+= args.mask_tok + ' '
+                text+= args.mask_tok[0] + ' '
                 token_pos = token.pos_          
                 morphology = token.morph
                 
             else:
-                text += token.text + ' '+args.mask_tok+' '
+                text += token.text + ' '+args.mask_tok[0]+' '
                 token_pos = None          # just to avoid a nested if
                 morphology = None
 
     else:
-        text = args.mask_tok + ' ' + str(verse.doc)
+        text = args.mask_tok[0] + ' ' + str(verse.doc)
         token_pos = None
         morphology = None
 
 
     #text = verse.context + ' ' + text
-    predictions = unmasker(verse.context + ' ' + text)
+    predictions = unmasker(verse.context + ' ' + text + sign + verse.context_after)
     print(text)
     candidates = []
     candidates_perp = []
@@ -82,7 +89,7 @@ def get_synonyms_cand(args,verse,tok_id,target_rythms, LLM_perplexity, adaptive=
             
             chunks= text.split()
             
-            mask_idx = chunks.index(args.mask_tok)
+            mask_idx = chunks.index(args.mask_tok[0])
 
             chunks[mask_idx] = word
             text_pred = ' '.join(chunks)
@@ -116,11 +123,11 @@ def get_synonyms_cand(args,verse,tok_id,target_rythms, LLM_perplexity, adaptive=
                         if rythm_comp_adaptive(rythm,target_rythms,adaptive):  # the rythm of the synonym has to be correct
                           
                             candidates.append(word)
-                            perp = perplexity(' '.join(text_pred.split()), LLM_perplexity)
+                            perp = perplexity(verse.context + ' ' + ' '.join(text_pred.split()) + verse.context_after, LLM_perplexity)
                             candidates_perp.append(perp)
                     else: 
                         candidates.append(word)
-                        candidates_perp.append(perplexity(text_pred), LLM_perplexity)
+                        candidates_perp.append(perplexity(verse.context + ' ' + text_pred + verse.context_after, LLM_perplexity))
                         
         if len(candidates) > 8:
             if i == 0:
@@ -168,7 +175,12 @@ def bidirectional_synonyms_single(args,verse,last_idx,context_aft, target, LLM_p
     else: 
         device = -1
 
-    unmasker_rhyme = pipeline('fill-mask', model = args.bidirectional_model, top_k = num_out,framework='pt',device=device)
+    if not verse.text[-1].isalpha():
+        sign = verse.text[-1]
+    else: 
+        sign = ''
+
+    predictions = []
 
     input_text = verse.text[:last_idx]
     
@@ -180,18 +192,35 @@ def bidirectional_synonyms_single(args,verse,last_idx,context_aft, target, LLM_p
 
     #text = verse.context[-100:] + '[SOV]' + input_text + '[MASK]' + ' [EOV]' + context_aft
 
-    text = verse.context[-100:] +  input_text + args.mask_tok +  context_aft
-    gpt2_text_1 = verse.context[-100:] + ' ' + input_text
+    text = verse.context[-250:] + '\n' +  input_text + '[MASK]' + sign + '\n' + context_aft
+    gpt2_text_1 = verse.context[-250:] + ' ' + input_text
     gpt2_text_2 = '\n' + context_aft
+    
+    for model_id, model in enumerate(args.bidirectional_model):
 
-    predictions = unmasker_rhyme(text)
+        unmasker_rhyme = pipeline('fill-mask', model = model, top_k = num_out,framework='pt',device=device)
+
+        text_inp = re.sub('\[MASK\]',args.mask_tok[model_id], text)
+        print(text_inp)
+        predictions.append(unmasker_rhyme(text_inp))
+
+
+    pred_words = []
+
+    for prediction in predictions: 
+        pred_words += [pred['token_str'] for pred in prediction]
 
     candidates = []
     candidates_perp = []
-    for prediction in predictions:
 
-        word = prediction['token_str']
-        word = re.sub(r'[^a-zäöü]','',word.lower())
+    if target is None:
+        target = []
+
+
+    for word in pred_words:
+
+        #word = prediction['token_str']
+        word = re.sub(r'[^a-zäöüß]','',word.lower())
         if len(target) > 0: 
             #rythm = get_rythm(word)
             rythm,_,_ = hyphenate_ipa(word)
@@ -199,12 +228,14 @@ def bidirectional_synonyms_single(args,verse,last_idx,context_aft, target, LLM_p
         found_correct = []
         if len(word) > 1 and word != 'unk' and word not in input_text and not doc[0].pos_ in no_verse_end:
             if len(target) > 0: 
+
                 if len(rythm) == len(target): 
                     if np.sum(np.abs(rythm-target)*(rythm != 0.5)) == 0:
                         candidates.append(word)
                         candidates_perp.append(perplexity(gpt2_text_1 + ' ' + word + ' ' + gpt2_text_2, LLM_perplexity))
                         found_correct.append(doc[0].pos_ == target_pos)
             else:
+        
                 candidates.append(word)
                 candidates_perp.append(perplexity(gpt2_text_1 + ' ' + word + ' ' + gpt2_text_2, LLM_perplexity))
                 found_correct.append(doc[0].pos_ == target_pos)
@@ -221,16 +252,6 @@ def bidirectional_synonyms_single(args,verse,last_idx,context_aft, target, LLM_p
 
     #max_value = (np.sort(candidates_perp)[:-int(len(candidates_perp)/3)])[-1]                      # lower 2/3 of the values
 
-  
-
-    '''candidates_chosen = []
-    for candidate in candidates:
-
-        rythm = np.asarray(get_rythm(candidate))
-        target = np.asarray(verse.rythm_tokens[last_idx])'''
-
-        
-           
     return candidates, candidates_perp
     
 
@@ -247,22 +268,33 @@ def bidirectional_synonyms(args,verse,context_aft, target_rythm, LLM_perplexity,
             last_idx = -i
             break
 
-    target_rythm_ext = np.asarray(extend_target_rythm(verse.rythm,target_rythm))
-    target = target_rythm_ext[-len(verse.rythm_tokens[last_idx]):]
+    
+    if target_rythm:
 
-    if len(target) < 4:
-        ################################################################################
-        # one alternative for last word
-        ################################################################################
-        candidates, candidates_perp = bidirectional_synonyms_single(args,verse, last_idx, context_aft, target, LLM_perplexity, num_out = 150)
+        target_rythm_ext = np.asarray(extend_target_rythm(verse.rythm,target_rythm))
+        target = target_rythm_ext[-len(verse.rythm_tokens[last_idx]):]
 
-        candidate_idx = np.argsort(candidates_perp)[:-int(len(candidates_perp)*0.6)]
+        if len(target) < 3:
+            split = False
+        else: 
+            split = True
+    else: 
+        split = False
+        target = None
+
+    ################################################################################
+    # one alternative for last word
+    ################################################################################
+
+    candidates_single, candidates_perp_single = bidirectional_synonyms_single(args,verse, last_idx, context_aft, target, LLM_perplexity, num_out = 150)
+
+    #candidate_idx = np.argsort(candidates_perp_first)[:-int(len(candidates_perp)*0.6)]
 
 
-        candidates_chosen = set(list(candidates[candidate_idx]))
-        candidates_chosen = [[candidate] for candidate in candidates_chosen if candidate.isalpha()]
+    #candidates_chosen = set(list(candidates[candidate_idx]))
+    #candidates_chosen = [[candidate] for candidate in candidates_chosen if candidate.isalpha()]
 
-    else:
+    if split:
         ###############################################################################
         # split word into two words
         ###############################################################################
@@ -280,28 +312,54 @@ def bidirectional_synonyms(args,verse,context_aft, target_rythm, LLM_perplexity,
         candidates_first_chosen = list(set(list(candidates_first[candidate_idx])))[:10]
     
         candidates_tuple = []
-        perplexities_second = []
+        candidates_perp_second = []
         for candidate in candidates_first_chosen:
-            length_rythm = len(get_rythm(candidate))
-            target_tmp = target[length_rythm:]
+            if target_rythm:
+                candidate_rythm = verse_cl(candidate).rythm
+                length_rythm = len(candidate_rythm)
+                target_tmp = target[length_rythm:]
+            else: 
+                target_tmp = None
 
-            txt_tmp = ' '.join(verse.text[:-last_idx-1]) + ' ' + candidate + ' ' + verse.text[last_idx]
+            txt_tmp = ' '.join(verse.text[:last_idx]) + ' ' + candidate + ' ' + verse.text[last_idx]
             verse_tmp = verse_cl(txt_tmp)
-            candidates_second, candidates_perp = bidirectional_synonyms_single(args,verse, -1, context_aft, target_tmp, LLM_perplexity, num_out = 20)
+            verse_tmp.context = verse.context
+            candidates_second, candidates_perp = bidirectional_synonyms_single(args,verse_tmp, -1, context_aft, target_tmp, LLM_perplexity, num_out = 20)
             candidates_tuple += [[candidate,candidate_second] for candidate_second in candidates_second if candidate_second.isalpha()]
-            perplexities_second += list(candidates_perp)
+            candidates_perp_second += list(candidates_perp)
 
-        if len(perplexities_second) > 3:
-            cut = -int(len(perplexities_second)/3)
+        '''if len(candidates_perp_second) > 3:
+            cut = -int(len(candidates_perp_second)/3)
 
         else:
-            cut = None
-        candidates_perp = np.asarray(candidates_perp)
-        candidate_idx = np.argsort(perplexities_second)[:cut]
+            cut = None'''
+        candidates_perp = list(candidates_perp_single) + candidates_perp_second#np.asarray(candidates_perp)
+        
 
-        candidates_tuple = pd.Series(candidates_tuple)
-        candidates_chosen = list(candidates_tuple[candidate_idx])
+        candidates = list(candidates_single) + list(candidates_tuple)
+    else:
+        candidates = list(candidates_single)
+        candidates_perp = list(candidates_perp_single)
 
-    candidates_chosen.append([verse.text[last_idx]])
+    candidates_perp = np.asarray(candidates_perp)
+    candidate_idx = np.argsort(candidates_perp)
+    candidates = pd.Series(candidates)
+    candidates_sorted = list(candidates[candidate_idx])
 
-    return candidates_chosen
+
+    candidates_sorted = [[verse.text[last_idx]]] + candidates_sorted
+
+    candidates_set = []
+    candidates_lower = []
+
+    for cand in candidates_sorted:
+        if type(cand) == list:
+            cand_str = ' '.join(cand)
+        else: 
+            cand_str = cand
+
+        if cand_str.lower() not in candidates_lower:
+            candidates_set.append(cand)
+            candidates_lower.append(cand_str.lower())
+
+    return candidates_set
