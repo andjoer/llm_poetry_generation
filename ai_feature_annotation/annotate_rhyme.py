@@ -25,7 +25,8 @@ from networkx.algorithms.components.connected import connected_components,number
 from preprocess_annotation import preprocess_ano
 
 #from networkx.algorithms.components import number_strongly_connected_components
-
+def str_eval(string):
+    return ast.literal_eval(str(string))
 
 class rhyme_vectors():
     
@@ -36,15 +37,14 @@ class rhyme_vectors():
             self.rhyme_model = siamese_rhyme.siamese_rhyme()
             self.get_vector = self.get_vector_sia
             self.get_distance = self.get_distance_sia
-            self.thresh = 0.4 
-            self.thresh_max = 0.7
+            self.thresh = 0.55
+            self.thresh_max = 0.55
 
         else:
             self.get_vector = self.get_vector_tts
             self.get_distance = self.get_distance_tts
-            self.thresh = 12
-            self.thresh_max = 16
-
+            self.thresh = 8
+            self.thresh_max = 10
     def get_vector_sia(self,word):
 
         return self.rhyme_model.get_word_vec(word)
@@ -254,27 +254,68 @@ def compare_rhyme_df(poem_df,gold,rhyme):
                
     return differences
 
+def load_txt_files(args):
+
+    if not args.fname_input == 'all':
+        fnames_input = [args.fname_input] 
+    else:
+        files = glob.glob(args.data_dir+"/*.txt")
+        fnames_input = [file.split('/')[-1] for file in files]
+
+    poem_lst = []
+    author_lst = []
+    for fname in fnames_input:
+        input_file = os.path.join(args.data_dir, fname)
+        with open(input_file) as f:
+            text = f.read()
+        
+        text_lst = text.split(args.sep)
+        poem_lst += text_lst
+        author_lst += [fname]*len(text_lst)
+
+    return pd.DataFrame(zip(author_lst,poem_lst),columns=[args.author_column,args.text_column])
+            
+
+
 class Annotate_rhyme():
     def __init__(self,args):
         self.args = args
         self.rhyme_schemes = []
         self.differences = []
-
-        input_file = os.path.join(self.args.data_dir, self.args.fname_input)
+        self.probability = []
+        
 
         self.rhyme_detection = rhyme_vectors(args.method)
 
-        try: 
-            self.poem_df = pd.read_csv(input_file)
-        except: 
+        if args.fname_input[-3:] == 'txt' or args.fname_input == 'all':
+            self.poem_df = load_txt_files(args)
+            
+
+        else:
+            
+            input_file = os.path.join(self.args.data_dir, self.args.fname_input)
+
             try: 
-                self.poem_df = pd.read_pickle(input_file)
+                self.poem_df = pd.read_csv(input_file)
             except: 
-                print('file not found or not a csv or pickle file')
-                raise Exception
+                try: 
+                    self.poem_df = pd.read_pickle(input_file)
+                except: 
+                    print('file not found or not a csv or pickle file')
+                    raise Exception
 
+
+        if args.concat_strophes:
+            self.poem_df['text'] = self.poem_df['text'].apply(lambda x: str(x) + '\n')
+            text_df_strophes = self.poem_df[['ID','text']].groupby(['ID']).sum()[args.text_column]
+
+            text_df_authors = self.poem_df.groupby(['ID']).first()[args.author_column]
+
+            self.poem_df = pd.DataFrame(list(zip(list(text_df_authors),list(text_df_strophes))),columns=[args.author_column,args.text_column])
+
+        print(self.poem_df.head())
         self.poem_df = preprocess_ano(self.poem_df,col_text = args.text_column)
-
+        
         if args.load_checkpoint:
             
             fname_ckp = os.path.join(args.data_dir+'/checkpoints', args.load_checkpoint)
@@ -285,7 +326,8 @@ class Annotate_rhyme():
             except: 
                 print('unable to load checkpoint')
                 raise Exception
-            
+
+            self.probability = ckp_df['prob_rhyme'].to_list()
             self.rhyme_schemes = ckp_df[self.args.rhyme_column].to_list()
             self.differences = ckp_df[self.args.difference_column].to_list()
 
@@ -310,26 +352,61 @@ class Annotate_rhyme():
             if len(verse_endings) > 1:
                 match_list, diff = rhyme_pairs(verse_endings,self.rhyme_detection)
                 rhyme_scheme = idx_to_scheme(match_list)
+                self.probability.append(len(set(rhyme_scheme))/len(verse_endings))
                 self.rhyme_schemes.append(rhyme_scheme)
                 self.differences.append(diff)
             else: 
                 self.rhyme_schemes.append('a')
-
+                self.probability.append(1)
             if (index+1)%self.args.save_every == 0: 
                 self.save_ckp()
 
         self.poem_df[self.args.rhyme_column] = self.rhyme_schemes
+        self.poem_df['rhyme_prob'] = self.probability
         #self.save_df_at(self.args.data_dir,self.args.fname_output, annotated_df)
 
+    
     def compare_to_gold(self):
         print(self.poem_df.head())
         self.poem_df['difference'] = compare_rhyme_df(self.poem_df,self.args.rhyme_column,self.args.gold_column)
 
     def get_dataframe(self):
         text = self.poem_df['text'].tolist()[:len(self.rhyme_schemes)]
-        annotated_df = pd.DataFrame(list(zip(text, self.rhyme_schemes, self.differences)),
-                columns =['text', self.args.rhyme_column,self.args.difference_column])
+        annotated_df = pd.DataFrame(list(zip(text, self.rhyme_schemes, self.differences,self.probability)),
+                columns =['text', self.args.rhyme_column,self.args.difference_column,'prob_rhyme'])
         return annotated_df
+
+    def output_statistics(self):
+
+        if self.args.flatten_for_stat:
+            self.statistic_df = pd.DataFrame([self.poem_df['rhyme_prob'].mean()],columns=['rhyme_prob'])
+        else:
+            self.statistic_df = self.poem_df[['author','rhyme_prob']]
+            self.statistic_df = self.statistic_df.groupby('author').mean()
+
+
+        lower_05 = []
+        lower_06 = []
+        lower_07= []
+        lower_08= []
+        for author in list(self.statistic_df.index.values):
+            print('author')
+            if self.args.flatten_for_stat:
+                author_df = self.poem_df
+            else:
+                author_df = self.poem_df[self.poem_df['author'] == author]
+            lower_05.append(len(author_df[author_df['rhyme_prob']<= 0.5])/len(author_df))
+            lower_06.append(len(author_df[author_df['rhyme_prob']<= 0.6])/len(author_df))
+            lower_07.append(len(author_df[author_df['rhyme_prob']<= 0.7])/len(author_df))
+            lower_08.append(len(author_df[author_df['rhyme_prob']<= 0.8])/len(author_df))
+
+        self.statistic_df['lower_05'] = lower_05
+        self.statistic_df['lower_06'] = lower_06
+        self.statistic_df['lower_07'] = lower_07
+        self.statistic_df['lower_08'] = lower_08
+        print(self.statistic_df.head()) 
+        self.save_df_at(self.args.data_dir,self.args.fname_output+'_statistic',self.statistic_df)
+
 
     def save_ckp(self):
         annotated_dataframe = self.get_dataframe()
@@ -349,16 +426,23 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     
 
-    parser.add_argument("--data_dir", type=str,default='data',help="subdirectory for the input and output data")
-    parser.add_argument("--fname_output", type=str,default='rhyme_df_rhyme_ano',help="filename of the output file")
-    parser.add_argument("--fname_input", type=str,default='rhyme_df_rhyme_ano_tts.pkl',help="filename of the created file")
+    parser.add_argument("--data_dir", type=str,default='data/rhyme_detection/Gutenberg',help="subdirectory for the input and output data")
+    parser.add_argument("--fname_output", type=str,default='gutenberg_rhyme_df',help="filename of the output file")
+    parser.add_argument("--fname_input", type=str,default='gutenberg.csv',help="filename of the created file")
+
     parser.add_argument("--text_column", type=str,default='text',help="name of the column that contains the texts")
-    parser.add_argument("--gold_column", type=str,default='rhyme',help="name of the column with gold annotation")
+    parser.add_argument("--gold_column", type=str,default=None,help="name of the column with gold annotation")
     parser.add_argument("--rhyme_column", type=str,default='rhyme_scheme',help="column of the ai annotation")
+    parser.add_argument("--author_column", type=str,default='author',help="column of the author name")
     parser.add_argument("--difference_column", type=str,default='difference',help="column for the vector differences")
     parser.add_argument("--save_every", type=int,default=10000,help="number of verses after which a checkpoint will be saved")
     parser.add_argument("--load_checkpoint", type=str,default=None,help="filename of the checkpoint to load")
     parser.add_argument("--method", type=str,default='siamese',help="method used to detect the rhymes (tts or siamese)")
+    parser.add_argument("--flatten_for_stat", type=str_eval,default=True,help="statistics for all authors not separate")
+
+    parser.add_argument("--concat_strophes", type=str_eval,default=False,help="concatenate the strophes of a poem")
+
+    parser.add_argument("--sep", type=str,default='\n\n',help="separator of poems in text file")
 
     args = parser.parse_args()
 
@@ -370,6 +454,8 @@ if __name__ == "__main__":
     annotation = Annotate_rhyme(args)
     annotation.annotate_rhyme()
     annotation.save_df()
+    annotation.output_statistics()
+
 
     if args.gold_column:
         annotation.compare_to_gold()

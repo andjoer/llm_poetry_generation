@@ -21,6 +21,25 @@ from poetry_generator_utils import parse_arguments, initialize_llms, get_LLM_nam
 
 import sys
 
+prompt_new_2 = ''' Titel: Warum ist etwas und nicht nur nichts
+
+Das ist die Frage, die sich mir stellt noch
+In tiefen Nächten, wenn die Sterne fliehen
+Was ist der Sinn des Lebens, frag ich mich
+In dunklen Stunden, wenn die Wolken ziehen.
+Ist es der Tod, der uns am Ende holt
+Und alles auslöscht, was wir hier getragen
+Ist es das Leben, das uns alles nimmt
+Und doch nichts bleibt, als diese leere Hülle?
+'''
+
+prompt_new = ''' Titel: Warum ist etwas und nicht nur nichts
+
+Das ist die Frage, die sich mir stellt noch
+In tiefen Nächten, wenn die Sterne fliehen
+Was ist der Sinn des Lebens, frag ich mich
+In dunklen Stunden, wenn die Wolken ziehen.
+'''
 
 def generate_poetry(args, 
                     shots = 1, 
@@ -262,7 +281,7 @@ if __name__ == "__main__":
             prompt = random.choice(prompts)
             
             if title_0:
-                title = title_indicator + title_0 + ':\n'
+                title = title_indicator + title_0 + '\n'
             else: 
                 title = ''
             args.prompt = prompt[0] + '\n' +title
@@ -292,12 +311,15 @@ if __name__ == "__main__":
                     args.rhyme_scheme = 'abab'
             else:
                 args.rhyme_scheme = random.choice(['aabb','abba','abab'])
-            
+
+        gpt3_prompt_2 = 'schreibe ein Gedicht auf Deutsch! Denke philosophisch tiefgründig, nicht trivial! Verpacke neue Gedanken! Verwende eine innovative, lyrische und überraschende Sprache!\n'
+        gpt3_prompt_1 = 'schreibe ein Gedicht auf Deutsch! \n'
         if args.LLM == 'GPT3':
-            args.prompt = 'schreibe ein Gedicht auf Deutsch! \n' + args.prompt
+            args.prompt = gpt3_prompt_2  + args.prompt
 
-     
-
+        args.prompt = random.choice([prompt_new, prompt_new_2])
+        args.rhyme_scheme = 'abab'
+        args.num_syll_list = [10,11]
         print('parameters')
 
         print('############## begin parameters ##############')

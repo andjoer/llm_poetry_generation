@@ -165,7 +165,7 @@ def find_rhyme_last_verse(args,verse_lst,idx1,idx2,first_syn,LLM_perplexity,last
             word_1 = word_pair[0]
             word_2 = word_pair[1]
 
-            if word_1 != word_2:
+            if word_1.lower() != word_2.lower():
                 difference =  compare_words(word_1,word_2, last_stressed = last_stress)
             else:
                 difference = 50
@@ -399,6 +399,8 @@ def find_rhyme(args,verse_lst,idx1,idx2,LLM_perplexity,last_stress = -2, LLM='',
             verse_lst_tmp[idx1] = verse_cl(' '.join(verse_lst[idx1].text[:last]) + ' ' + ' '.join(syn) + sign_1)
             verse_lst_tmp, distance, bi_syn, causal_syns = find_rhyme_last_verse(args,verse_lst_tmp,idx1,idx2, syn[-1],LLM_perplexity,last_stress = last_stress, LLM=LLM, LLM2 = LLM2, 
                                                                                 top_k = top_k, return_alternatives=return_alternatives,force_rhyme=force_rhyme)
+
+
             candidates.append(verse_lst_tmp)
 
             distances.append(distance)
@@ -437,7 +439,8 @@ def find_rhyme(args,verse_lst,idx1,idx2,LLM_perplexity,last_stress = -2, LLM='',
 
 
 def find_rhyme_independent(args,verse_lst,idx1,idx2,LLM_perplexity,last_stress = -2, LLM='', LLM2 = None, return_alternatives=False,force_rhyme=False): # todo: integrate with new version above
-    
+
+  
     '''
     finds rhyming endings for two verses 
     '''
@@ -523,7 +526,7 @@ def find_rhyme_independent(args,verse_lst,idx1,idx2,LLM_perplexity,last_stress =
             causal_syns += gpt_synonyms(args,verse_lst[idx2],target_rythm,num_remove=2,num_return_sequences = 150,LLM=LLM,eol=eol,use_pos = use_pos,temperature=rhyme_temperature,top_p = top_p_rhyme ,
                         invalid_verse_ends=invalid_verse_ends,repetition_penalty=repetition_penalty,replace_linebreaks=args.replace_linebreaks)[1:]        
 
-
+     
     else:
         causal = False
         context_aft = ''
@@ -591,7 +594,7 @@ def find_rhyme_independent(args,verse_lst,idx1,idx2,LLM_perplexity,last_stress =
             word_1 = word_pair[0]
             word_2 = word_pair[1]
 
-            if word_1 != word_2:
+            if word_1.lower() != word_2.lower():
                 difference =  compare_words(word_1,word_2, last_stressed = last_stress)
             else:
                 difference = 50
@@ -610,7 +613,7 @@ def find_rhyme_independent(args,verse_lst,idx1,idx2,LLM_perplexity,last_stress =
             word_1 = word_pair[0]
             word_2 = word_pair[1]
 
-            if word_1 != word_2:
+            if word_1.lower() != word_2.lower():
    
                 if compare_last_vowels(word_1,word_2):
                     bi_selection = sent_pairs[idx][0]
@@ -686,9 +689,12 @@ def find_rhyme_independent(args,verse_lst,idx1,idx2,LLM_perplexity,last_stress =
 
         distances = []
         
-        for vector_pair in vector_pairs:   
-            distance = rhyme_model.vector_distance(vector_pair[0],vector_pair[1])
-                                                                    
+        for idx, vector_pair in enumerate(vector_pairs):  
+
+            if word_pairs[idx][0].lower()[-6:] != word_pairs[idx][1].lower()[-6:]: 
+                distance = rhyme_model.vector_distance(vector_pair[0],vector_pair[1])
+            else: 
+                distance = [1]                                                        
             distances.append(distance[0])
 
         distances = np.asarray(distances) # distances between each possible combination

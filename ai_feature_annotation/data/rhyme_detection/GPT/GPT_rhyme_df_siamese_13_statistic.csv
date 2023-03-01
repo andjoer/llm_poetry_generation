@@ -1,0 +1,13 @@
+author,rhyme_prob,lower_05,lower_07
+GPT3_deutsch_davinci_2_04.txt,0.8704285714285711,0.03,0.18
+GPT3_deutsch_davinci_2_08.txt,0.842191367456073,0.04,0.2
+GPT3_deutsch_davinci_2_09.txt,0.8715622988122989,0.02,0.19
+GPT3_deutsch_davinci_3_04.txt,0.7628403679653682,0.04,0.37
+GPT3_deutsch_davinci_3_08.txt,0.7084542124542126,0.09,0.55
+GPT3_deutsch_davinci_3_09.txt,0.7383685758685757,0.03,0.45
+GPT3_goethe_davinci_2_04.txt,0.8723617216117217,0.03,0.17
+GPT3_goethe_davinci_2_08.txt,0.8870833333333331,0.04,0.12
+GPT3_goethe_davinci_2_09.txt,0.8387738095238098,0.09,0.2
+GPT3_goethe_davinci_3_04.txt,0.6898914002664002,0.09,0.62
+GPT3_goethe_davinci_3_08.txt,0.7215649318002257,0.05,0.48
+GPT3_goethe_davinci_3_09.txt,0.6996429265179265,0.08,0.61

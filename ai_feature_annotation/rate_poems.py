@@ -5,6 +5,7 @@ from tqdm import tqdm
 import openai
 import pandas as pd
 import numpy as np
+import re
 import pickle 
 
 def gpt3(input_text,temperature = 0.8,max_length=700,num_return_sequences=10):
@@ -33,7 +34,8 @@ def gpt3(input_text,temperature = 0.8,max_length=700,num_return_sequences=10):
             print('failed to connect with api')
             time.sleep(10)
 
-prompts = ['''Bewerte folgendes Gedicht anhand der Kriterien Aussage, Verständlichkeit, Kreativität, emotionaler Wirkung und Sprachqualität. Begründe! Sei sehr anspruchsvoll! Es könnte schlecht oder gut sein. 
+prompts = ['''Bewerte folgendes Gedicht anhand der Kriterien Aussage, Verständlichkeit, Kreativität, emotionaler Wirkung und Sprachqualität. Begründe! Sei sehr anspruchsvoll! Es könnte schlecht oder gut sein. Befinden sich Grammatik oder Schreibfehler im Gedicht? Nicht jede Metapher ist kreativ, sie kann auch sinnlos und unverständlich sein, aber auch gut.
+Wenn Du die Aussage nicht verstehst, sag es! Interpretiere interessante und kreative Metaphern (aber nur wenn interessante und kreative Metaphern vorhanden sind)! Sage am Schluss, wie Du das Gedicht insgesamt findest!\n''','''Bewerte folgendes Gedicht anhand der Kriterien Aussage, Verständlichkeit, Kreativität, emotionaler Wirkung und Sprachqualität. Begründe! Sei sehr anspruchsvoll! Es könnte schlecht oder gut sein. 
 Nur weil es viele Metaphern enthält, muss es nicht zwangsläufig kreativ sein. Denn die Metaphern können schlechte, unverständliche, aber auch gute und kreative Metaphern sein! Es gibt auch andere Kriterien für Kreativität als Metaphern. 
 Wenn Du die Aussage nicht verstehst, sag es! Sage am Schluss, wie Du das Gedicht insgesamt findest!\n''',
 '''Bewerte folgendes Gedicht anhand der Kriterien Verständlichkeit, Kreativität, Sprachqualität und dem, was du beim Lesen fühlst. Begründe! Sei sehr anspruchsvoll!''']
@@ -55,8 +57,9 @@ def rate_poems(poem_df,
             poem_df[column_name] = np.empty((len(poem_df), 0)).tolist()
 
             for idx, row in tqdm(poem_df.iterrows(),total=poem_df.shape[0]):
-                prompt = prompts[prompt_id] +'\"'+ row['poem']+'\"'
-                poem_df.at[idx,column_name] = gpt3(prompt,temperature=temperature,max_length = 750)
+                poem = re.sub(r'\s([,.!?;:](?:\s|$))', r'\1', row['poem'])
+                prompt = prompts[prompt_id] +'\"'+ poem +'\"'
+                poem_df.at[idx,column_name] = gpt3(prompt,temperature=temperature,num_return_sequences=15, max_length = 750)
                 counter += 1
                 if counter % save_every == 0:
                     fname = 'data/checkpoints/poem_reviews_' + str(counter) +'.pkl'
@@ -78,6 +81,6 @@ poem_df_out_csv = poem_df_out.copy()
 for coll in list(poem_df_out.columns[4:]):
     poem_df_out_csv[coll] = poem_df_out_csv[coll].apply(lambda x: ' review \n'.join(x))
 
-poem_df_out.to_pickle('data/poem_reviews.pkl')
-poem_df_out_csv.to_csv('data/poem_reviews.csv',index = False)
+poem_df_out.to_pickle('data/reviews/poem_reviews.pkl')
+poem_df_out_csv.to_csv('data/reviews/poem_reviews.csv',index = False)
 print(poem_df_out_csv.head())

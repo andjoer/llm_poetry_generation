@@ -12,9 +12,9 @@ def str_eval(string):
 def parse_arguments():
     parser = argparse.ArgumentParser()
     parser.add_argument("--prompt", type=str,default=None,help="initial input prompt")
-    parser.add_argument("--title", type=str,default='Die Regierung',help="title of the poem") 
+    parser.add_argument("--title", type=str,default='Warum ist etwas und nicht nur nichts',help="title of the poem") 
     parser.add_argument("--add_title_indicator", type=str_eval,default=True,help="add the word titel in front of the title")
-    parser.add_argument("--generated_lines", type=int,default=12,help="number of lines that will be generated")
+    parser.add_argument("--generated_lines", type=int,default=16,help="number of lines that will be generated")
     parser.add_argument("--generated_poems", type=int,default=1000,help="number of poems that will be generated")
     parser.add_argument("--replace_linebreaks", type=str_eval,default=False,help="replaces linebreaks with spaces in the prompts")
 
@@ -30,7 +30,7 @@ def parse_arguments():
     parser.add_argument("--LLM_sampling", type=str,default='systematic',help="sampling method for gpt2 models - systematic or multinomial")
     parser.add_argument("--LLM_random_first", type=str_eval,default=True,help="mix the top p filtered logits at the first position by multinomial sampling")
     parser.add_argument("--LLM_random_all", type=str,default=True,help="mix the top p filtered logits at every position by multinomial sampling")
-    parser.add_argument("--LLM_temperature", type=float,default=0.9,help="sampling temperature for systematic verse sampling")
+    parser.add_argument("--LLM_temperature", type=float,default=0.8,help="sampling temperature for systematic verse sampling")
     parser.add_argument("--trunkate_after", type=int,default=150,help="number of tries after which the search beam will be trunkated when sampling = systematic")
     parser.add_argument("--LLM_top_p", type=float,default=None,help="top p filter value used if sampling = systematic for the initial verse")
     parser.add_argument("--syllable_count_toll", type=float,default=0.65,help="precentage of the allowed difference between target syllables and delivered syllables by gpt_poet")
@@ -49,7 +49,7 @@ def parse_arguments():
 
     parser.add_argument("--LLM_rhyme", type=str,default=None,help="ge--force_rhymenerative language model to use from the huggingface library or gpt3")
     parser.add_argument("--LLM_rhyme_sampling", type=str,default='systematic',help="sampling method for the rhyme model - systematic or multinomial")
-    parser.add_argument("--rhyme_temperature", type=float,default=0.9,help="sampling temperature for rhyming words sampling")
+    parser.add_argument("--rhyme_temperature", type=float,default=0.8,help="sampling temperature for rhyming words sampling")
     
     parser.add_argument("--use_pos_rhyme_syns", type=str_eval,default=True,help="synonyms with the same pos tokens are allowed when looking for rhymes (only if sampling = systematic)")
     parser.add_argument("--top_p_dict_rhyme", type=str_eval,default={0:0.75,2:0.5},help="top p dictionary used to find rhyming alternatives for a single word")
@@ -60,7 +60,7 @@ def parse_arguments():
     parser.add_argument("--rhyme_stop_tokens", type=str_eval,default=[',','.','!','?',';',':'],help="list of tokens after which a verse could end (only applies when sampling = systematic)")
     parser.add_argument("--force_rhyme", type=str_eval,default=False,help="list of tokens after which a verse could end (only applies when sampling = systematic)")  
     parser.add_argument("--failed_rhyme_count_limit", type=int,default=3,help="number of alternative verses is created if no rhyme is found when force_rhyme is enabled")
-    parser.add_argument("--sample_rhymes_independent", type=str_eval,default=False,help="sample the first and the last verse end of a rhyme-pair independently from each other")  
+    parser.add_argument("--sample_rhymes_independent", type=str_eval,default=True,help="sample the first and the last verse end of a rhyme-pair independently from each other")  
 
 
     parser.add_argument("--rhyme_scheme", type=str,default=None,help="rhyme scheme for the created poem")

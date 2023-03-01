@@ -63,8 +63,8 @@ class perplexity():
         encodings = self.tokenizer(self.text, return_tensors="pt")
 
         # taken from https://huggingface.co/transformers/perplexity.html
-        max_length = 256#self.model.config.n_positions
-        stride = 128
+        max_length = self.model.config.n_positions
+        stride = 512
         seq_len = encodings.input_ids.size(1)
         nlls = []
         prev_end_loc = 0
@@ -83,9 +83,9 @@ class perplexity():
                 # We will take average over all the tokens to get the true average
                 # in the last step of this example.
                 neg_log_likelihood = outputs.loss * trg_len
-
+  
             nlls.append(neg_log_likelihood)
-
+            
             prev_end_loc = end_loc
             processed_token += trg_len
             if end_loc == seq_len:
@@ -183,11 +183,22 @@ class perplexity():
         ppl = torch.exp(log_likelihood.sum() / trg_len).item()
         print("Perplexity:", ppl)        
 
-def preprocess_text(text):
+def preprocess_text_lb(text):
     if type(text) == list:
         text = ' '.join(text)
     
     return ' '.join((re.sub('[^A-ZÄÖÜa-zäöüß,.!? ]', ' ', text)).split())
+
+def preprocess_text(text):
+    if type(text) == list:
+        text = ' '.join(text)
+
+    lines = []
+    for line in text.split('\n'):
+        lines.append(' '.join((re.sub('[^A-ZÄÖÜa-zäöüß,.!? ]', ' ', line)).split()))
+
+    return '\n'.join(lines)
+
 
 def remove_titel(text):
     text_lst = text.split('\n')
@@ -196,34 +207,35 @@ def remove_titel(text):
     text_lst = [text for text in text_lst if 'Titel' not in text]
     print(len(text_lst))
     text = '\n'.join(text_lst)
+    print(text)
     return text
 
 
 if __name__ == "__main__":
     
     parser = argparse.ArgumentParser()
-    parser.add_argument("--path", type=str,default='data/perplexity/evaluation_2',help="relative path to the text file to evaluate")
+    parser.add_argument("--path", type=str,default='data/perplexity/evaluation_3',help="relative path to the text file to evaluate")
     parser.add_argument("--fname_input", type=str,default='gpt2_training_gutenberg_only_hoelderlin_no_train.txt',help="filename of the input file")
     parser.add_argument("--fname_input_2", type=str,default='Anjoe/poetry-gpt2-large-no_schiller',help="filename of the input file")
     parser.add_argument("--model", type=str,default='Anjoe/poetry-gpt2-large-no_schiller',help="name of the model to evaluate")
     args = parser.parse_args()
 
-    models = ['benjamin/gerpt2-large','Anjoe/poetry-gpt2-large-no_schiller_2','Anjoe/poetry-gpt2-large-no-hoel_2','Anjoe/poetry-gpt2-large-complete_2']
-    text_lst = ['bajohr_halbzeug_perplexity.txt','john_bock.txt']+['GPT2_generated_poems.txt','GPT3_generated_poems.txt','bundestag_perplexity.txt','gpt2_training_gutenberg_only_schiller_no_train.txt','gpt2_training_gutenberg_only_hoelderlin_no_train.txt','generated_poems.txt','gpt2_training_gutenberg_test.txt']
+    models = ['benjamin/gerpt2-large','Anjoe/poetry-gpt2-large-complete_3']
+    text_lst = ['bajohr_halbzeug_perplexity.txt','john_bock.txt','gpt2_training_gutenberg_only_goethe_no_train.txt']
 
     results = []
     for idx,model in enumerate(models):
         results.append([])
         for text in text_lst:
 
-            perp = perplexity(model,text1=text, path=args.path,prep_text=False)
+            perp = perplexity(model,text1=text, path=args.path,prep_text=True)
             perp.perplexity_corpus()
             results[idx].append(perp.ppl)
 
     result_df = pd.DataFrame(results,index=models,columns=text_lst)
 
     print(result_df.head())
-    result_df.to_csv(args.path+'/evaluation_128.csv')
+    result_df.to_csv(args.path+'/evaluation_prep.csv')
 
 
     #perp = perplexity(args.model,text1=args.fname_input, path=args.path)

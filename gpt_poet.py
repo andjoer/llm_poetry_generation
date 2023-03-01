@@ -396,6 +396,7 @@ def gpt_sample_synonyms(verse,target_rythm,num_remove=2, max_length = 10, LLM=No
 
     elif LLM == 'GPT3':
         generated = gpt3(input_text_cont, LLM, max_length=max_length,num_return_sequences=128,repetition_penalty=repetition_penalty,top_p = top_p,temperature = temperature,replace_linebreaks=replace_linebreaks)
+
     else:
         raise Exception('invalid LLM selection')
     
@@ -454,10 +455,10 @@ def gpt_sample_synonyms(verse,target_rythm,num_remove=2, max_length = 10, LLM=No
 
                     if np.sum(comp) == 0:
 
-                        lines.append(input_text  + ' ' + ' '.join(verse_tmp.text))
+                        lines.append(input_text  + ' ' + line)
 
             elif len(target_rythm) == 0 and condition: 
-                lines.append(input_text  + ' ' + ' '.join(verse_tmp.text))
+                lines.append(input_text  + ' ' + line)
 
     
     return lines
