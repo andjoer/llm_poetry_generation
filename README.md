@@ -1,7 +1,8 @@
 # Poetry Generation with large language models like GPT2 or GPT3
 The core algorithm is model agnostic
 
-##Cite: 
+## Cite: 
+
 Jörg, Andreas (2024): Poetische KI: Schöpfung, Deutung und Bewertung lyrischer Texte durch künstliche Intelligenz. In: Digitale Hermeneutik: Maschinen – Verfahren – Sinn. Hagen: Hagen University Press. S. 211–248. (= Digitale Kulturen). Online unter: https://nbn-resolving.org/urn:nbn:de:hbz:708-dh14366.
 
 ## TL;DR
