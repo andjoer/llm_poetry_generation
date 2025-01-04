@@ -1,6 +1,9 @@
 # Poetry Generation with large language models like GPT2 or GPT3
 The core algorithm is model agnostic
 
+##Cite: 
+Jörg, Andreas (2024): Poetische KI: Schöpfung, Deutung und Bewertung lyrischer Texte durch künstliche Intelligenz. In: Digitale Hermeneutik: Maschinen – Verfahren – Sinn. Hagen: Hagen University Press. S. 211–248. (= Digitale Kulturen). Online unter: https://nbn-resolving.org/urn:nbn:de:hbz:708-dh14366.
+
 ## TL;DR
 ### The main project 
 It consists of an algorithm which aims to create metrically correct poetry that rhymes in german language as well. It can be tested via google colabs: colabs/poetry_generation. Howerver, it takes a bit until all packages are installed. There is also a brief description and demonstration of the rythm and rhyme algorithms in the colab. <br/>
@@ -157,6 +160,3 @@ If there is any output complying with the conditions it is forwarded to an algor
 ### Finding rhyming pairs
 After a verse is generated whith its rhyming partner already existing the algorithm looks for rhymes. For the first verse of the pair the task to produce alternatives is a bidirectional one since there is context on both sides of the end of the verse. For the second verse it is a causal langauge modelling task. Therefore, the BERT - GPT2 tandem creates synonyms for the ending of the first verse, while the causal language model does so for the last verse. Afterwards the verse endings are embedded by the siamese rhyme model and the pair with the minimum distance is chosen. Also, an algorithm is implemented that looks for rhymes by using colone phonetics https://de.wikipedia.org/wiki/Kölner_Phonetik since the output and processes of the model are saved, this allows for a comparison between the methods in later studies.
 
-Cite: 
-
-Jörg, Andreas (2024): Poetische KI: Schöpfung, Deutung und Bewertung lyrischer Texte durch künstliche Intelligenz. In: Digitale Hermeneutik: Maschinen – Verfahren – Sinn. Hagen: Hagen University Press. S. 211–248. (= Digitale Kulturen). Online unter: https://nbn-resolving.org/urn:nbn:de:hbz:708-dh14366.
